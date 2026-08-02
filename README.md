@@ -1,0 +1,73 @@
+# qld-e2-bot
+
+Autonomous paper-trading bot for the frozen **E2 QLD rule** ("graded
+vol-confirmed re-entry"). Deterministic Python computes the signal; Claude
+glue only schedules, executes, and reports. Alpaca paper account only.
+
+## Architecture
+
+Git is the home and the truth. Alpaca is execution only, plus its market-data
+API as the bars source and its immutable order/fill records as the
+independent witness.
+
+```
+engine/signal_engine.py   fetch QLD daily bars (Alpaca, adjustment=all),
+                          compute E2 signal, append to log/signal_log.jsonl
+engine/execute.py         map signal -> at most one MOC order (spec below),
+                          append to log/trade_log.jsonl
+scripts/alpaca.sh         bash wrapper for ad-hoc Alpaca calls (Claude glue)
+scripts/email.sh          Resend email wrapper (reports)
+reference/                backtest reference signals (derived aggregates only)
+log/                      append-only signal + trade logs, committed daily
+```
+
+## The E2 rule (frozen — never modify without a new decision)
+
+Signal from day-N close, QLD price/returns only:
+
+- `vol` = 20d realized vol of daily returns, annualized
+- `hi` = expanding 90th percentile of vol (min 252 vol observations)
+- `trend` = px > SMA(200)
+- In-trend: alloc = 1.0, but 0.5 while vol > hi
+- Below trend: alloc = 0.0, except re-entry (px > SMA(20) and
+  vol < 0.9 × 60d max vol) → 1.0, or 0.5 if vol still > hi
+
+## Execution spec (decided 2026-08-02)
+
+1. Signal from close N → **market-on-close** order day N+1 (submitted before
+   15:45 ET) → position live from N+2. Matches backtest `sig.shift(2)`.
+2. Whole shares, round down; target dollars = alloc × account equity.
+3. Trade **only on signal change**; never rebalance for drift.
+4. Missed days self-heal: next run trades toward that day's fresh signal;
+   never back-fill.
+5. Paper account reset to $100,000 before go-live.
+
+## Data feed decision
+
+`GET https://data.alpaca.markets/v2/stocks/QLD/bars` with
+`timeframe=1Day&adjustment=all&feed=sip&sort=asc`, paginated.
+`adjustment=all` (splits **and** dividends) so closes are total-return
+adjusted, matching the backtest's return series. Engine hard-fails if
+history < 273 bars (SMA200 + expanding-252 vol percentile warmup) or if the
+latest bar ≠ the last completed session (Alpaca calendar).
+
+Note: Alpaca v2 historical coverage may start later than QLD inception
+(2006). The verify step (e2bot-05) measures the actual overlap; warmup only
+needs ~273 bars, so signals are still valid from ~13 months after the feed's
+first bar.
+
+## Daily run (trading days, before 15:45 ET)
+
+```
+python3 engine/signal_engine.py     # yesterday's-close signal, logged
+python3 engine/execute.py           # at most one MOC order, logged
+git add log/ && git commit          # audit trail (convention: e2bot-07)
+```
+
+Both scripts hard-fail (non-zero exit) on any invalid/stale input — a failed
+run trades nothing.
+
+## Setup
+
+- `cp env.template .env` and fill Alpaca paper keys (never committed).
+- Requires python3 with pandas + numpy; stdlib urllib only for HTTP.
