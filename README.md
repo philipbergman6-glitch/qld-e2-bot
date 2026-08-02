@@ -67,6 +67,27 @@ git add log/ && git commit          # audit trail (convention: e2bot-07)
 Both scripts hard-fail (non-zero exit) on any invalid/stale input — a failed
 run trades nothing.
 
+## Schedule (decided 2026-08-02, e2bot-06)
+
+Runtime: **Claude Code cloud routines** on this repo (same pattern as the
+old BOT2.0), prompts in `routines/` — paste verbatim, env vars set on the
+routine, never in a committed file.
+
+| Routine      | Time (ET)     | Prompt               | Does                        |
+|--------------|---------------|----------------------|-----------------------------|
+| E2BOT-daily  | 12:00 Mon–Fri | `routines/daily.md`  | signal → order → commit → heartbeat email |
+| E2BOT-weekly | 16:20 Fri     | `routines/weekly.md` | read-only rollup email      |
+
+Why 12:00 ET: the previous close is final, and a MOC order submitted at
+noon rests until the close — automatically safe on early-close days
+(~12:45 ET MOC cutoff) with a single schedule. Holidays: the daily routine
+checks the Alpaca clock and sends a "market closed" heartbeat instead.
+
+Failure behavior: any non-zero script exit → no trade, one FAILURE email,
+stop; the missed day self-heals at the next run (execution spec rule 4).
+Silence is failure — no daily email by ~12:15 ET on a trading day means
+the run died before its alert step.
+
 ## Setup
 
 - `cp env.template .env` and fill Alpaca paper keys (never committed).

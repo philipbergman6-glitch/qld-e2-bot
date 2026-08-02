@@ -55,10 +55,15 @@ def fatal(msg):
 
 
 def load_env():
-    """Load repo-root .env into os.environ (no override of existing vars)."""
+    """Load repo-root .env into os.environ (no override of existing vars).
+
+    Missing file is allowed — cloud routines inject keys as process env vars
+    (e2bot-06); the ALPACA_API_KEY/SECRET_KEY check below still hard-fails
+    if keys arrive from neither source.
+    """
     path = os.path.join(ROOT, ".env")
     if not os.path.exists(path):
-        fatal(".env not found at repo root")
+        return
     with open(path) as f:
         for line in f:
             line = line.strip()

@@ -44,9 +44,11 @@ def fatal(msg):
 
 
 def load_env():
+    # Missing .env allowed — cloud routines inject process env vars (e2bot-06);
+    # the key check below still hard-fails if keys arrive from neither source.
     path = os.path.join(ROOT, ".env")
     if not os.path.exists(path):
-        fatal(".env not found at repo root")
+        return
     with open(path) as f:
         for line in f:
             line = line.strip()
