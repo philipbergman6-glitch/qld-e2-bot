@@ -26,6 +26,7 @@ Prints the full signal state as JSON on stdout; appends the same record to
 log/signal_log.jsonl unless --no-log. Exit code 0 only on a valid signal.
 """
 import datetime as dt
+import hashlib
 import json
 import os
 import sys
@@ -92,13 +93,21 @@ def alpaca_headers():
 
 
 def fetch_bars():
-    """All daily bars for SYM, adjustment=all, ascending. Returns DataFrame."""
+    """All daily bars for SYM, adjustment=all, ascending. Returns (df, query).
+
+    `query` is the exact (key-free) source query the bars came from; it is
+    logged alongside a hash of the bars so a third party can re-fetch and
+    verify the engine's inputs (audit convention, AUDIT.md).
+    """
     data_ep = os.environ.get("ALPACA_DATA_ENDPOINT", "https://data.alpaca.markets/v2")
     headers = alpaca_headers()
     bars, token = [], None
+    query = None
     while True:
         params = {"timeframe": "1Day", "adjustment": "all", "feed": "sip",
                   "start": START, "limit": "10000", "sort": "asc"}
+        if query is None:
+            query = f"{data_ep}/stocks/{SYM}/bars?{urllib.parse.urlencode(params)}"
         if token:
             params["page_token"] = token
         url = f"{data_ep}/stocks/{SYM}/bars?{urllib.parse.urlencode(params)}"
@@ -118,7 +127,18 @@ def fetch_bars():
         fatal("bars not in ascending date order")
     if df.px.isna().any() or (df.px <= 0).any():
         fatal("missing or non-positive close prices")
-    return df
+    return df, query
+
+
+def bars_digest(df):
+    """SHA-256 over the exact (date, close) series the rule consumed.
+
+    Canonical form: one `YYYY-MM-DD,<close repr>` line per bar, ascending,
+    newline-terminated. Closes are written with repr() so the digest binds the
+    full float the engine used, not a rounded display value.
+    """
+    payload = "".join(f"{d},{px!r}\n" for d, px in zip(df.index, df.px))
+    return hashlib.sha256(payload.encode()).hexdigest()
 
 
 def last_completed_session():
@@ -167,7 +187,7 @@ def compute_signals(px, ret):
 def main():
     no_log = "--no-log" in sys.argv[1:]
     load_env()
-    df = fetch_bars()
+    df, query = fetch_bars()
     if len(df) < MIN_BARS:
         fatal(f"only {len(df)} bars; need >= {MIN_BARS} for warmup")
     session = last_completed_session()
@@ -184,6 +204,8 @@ def main():
         "computed_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "bars_total": int(len(df)),
         "first_bar": str(df.index[0]),
+        "bars_sha256": bars_digest(df),
+        "source_query": query,
         "px": round(float(row.px), 4),
         "sma200": round(float(row.sma200), 4),
         "sma20": round(float(row.sma20), 4),

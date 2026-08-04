@@ -26,6 +26,8 @@ and `20 16 * * 5` instead.
    `ALPACA_DATA_ENDPOINT`, `RESEND_API_KEY`, `EMAIL_TO`, `EMAIL_FROM`.
    Values: `~/Documents/Coding_Projects/qld-e2-bot/.env` on the Mac
    (paper keys only; no Perplexity — this bot has no LLM in the signal path).
+4. Environment setup script (the engine needs these; stdlib covers the rest):
+   `pip install pandas numpy`
 
 ## Failure model
 

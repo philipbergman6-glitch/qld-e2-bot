@@ -12,6 +12,9 @@ Implements the execution spec (e2bot-03, 2026-08-02) verbatim:
 State: log/last_acted_signal.json holds the last signal an order was placed
 for (or confirmed equal). log/trade_log.jsonl is append-only.
 
+Kill switch: a `HALT` file at the repo root suppresses all ordering (exit 0,
+logged as HALTED, state untouched). See RUNBOOK.md.
+
 Usage: python3 engine/execute.py [--dry-run]
 Run AFTER engine/signal_engine.py on the same day; reads the newest record
 from log/signal_log.jsonl and hard-fails if it is not from the last completed
@@ -32,6 +35,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SIGNAL_LOG = os.path.join(ROOT, "log", "signal_log.jsonl")
 TRADE_LOG = os.path.join(ROOT, "log", "trade_log.jsonl")
 STATE_PATH = os.path.join(ROOT, "log", "last_acted_signal.json")
+HALT_PATH = os.path.join(ROOT, "HALT")  # kill switch: present => never order
 
 SYM = "QLD"
 MOC_CUTOFF = dt.time(15, 45)  # ET; 5 min safety before Alpaca's 15:50 cutoff
@@ -96,6 +100,30 @@ def main():
     alloc = sig["signal_alloc"]
     if alloc not in (0.0, 0.5, 1.0):
         fatal(f"invalid signal_alloc {alloc}")
+
+    # Kill switch (RUNBOOK "Halt"): a committed HALT file at the repo root stops
+    # all ordering, checked before any market/clock gate so a halted run reports
+    # "HALTED" rather than a market-closed failure. State is deliberately NOT
+    # updated, so removing HALT lets the next run trade toward the then-current
+    # signal (self-heal rule 4). Exit 0: a halt is intentional, not a failure.
+    if os.path.exists(HALT_PATH):
+        with open(HALT_PATH) as f:
+            reason = f.read().strip().splitlines()
+        halted = {
+            "run_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+            "signal_date": sig["signal_date"],
+            "signal_alloc": alloc,
+            "action": "HALTED by HALT file — no order",
+            "halt_reason": reason[0] if reason else "(no reason recorded)",
+            "order_id": None,
+            "dry_run": dry,
+        }
+        if not dry:
+            os.makedirs(os.path.dirname(TRADE_LOG), exist_ok=True)
+            with open(TRADE_LOG, "a") as f:
+                f.write(json.dumps(halted) + "\n")
+        print(json.dumps(halted, indent=2))
+        return
 
     # Market must be open and before the MOC cutoff (order day = N+1).
     clock = api("GET", "/clock")

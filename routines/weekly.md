@@ -11,8 +11,14 @@ one alert email, stop.
 STEP 1 — Read the week from the repo (git is the truth):
 - log/signal_log.jsonl — this week's signal records (Mon–today)
 - log/trade_log.jsonl — orders placed this week, if any
+- log/ops_log.jsonl — market-closed / failure / halt / manual events this week
 - git log --oneline --since="7 days ago" — confirm a daily commit exists
   for every trading day this week. List any missing days.
+- Accounting rule (AUDIT.md): every trading day must have EITHER a signal
+  record OR an ops record. Report any day with neither as a GAP.
+- Reconcile: every Alpaca order this week (scripts/alpaca.sh orders all) must
+  appear in log/trade_log.jsonl. An order with no log line is an ALERT — say
+  so in the email in capitals.
 
 STEP 2 — Account state:
 bash scripts/alpaca.sh account
@@ -33,7 +39,8 @@ QLD buy-hold week: ±X%
 Signal now: ${ALLOC}% (changes this week: <list or none>)
 Trades: <list or none>
 Daily commits: <5/5 | MISSING: dates>
-Notes: <one line>"
+Reconciliation: <Alpaca orders all matched | ALERT: unmatched order ids>
+Notes: <one line, incl. any halt/failure/manual events>"
 
 STEP 5 — Nothing to commit (read-only routine). If STEP 1 found missing
 daily commits, say so in the email — that is the alert.
