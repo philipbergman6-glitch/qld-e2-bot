@@ -14,12 +14,15 @@ override, re-derive, or "sanity-adjust" the signal with your own judgment.
   append-only. Engine changes require a human decision recorded in the
   QLD-model wayfinder map first.
 - No fund files ever enter this repo.
+- A `HALT` file at the repo root means STOP: `execute.py` places no order
+  (exit 0, logged HALTED — not a failure). Never delete it to "unblock" a run.
+- Audit-trail format: `AUDIT.md`. Operator procedures: `RUNBOOK.md`.
 
 ## Daily routine (trading days, run before 15:45 ET)
 
 1. `python3 engine/signal_engine.py`
 2. `python3 engine/execute.py`
-3. Commit `log/` with the day's record (see README; convention e2bot-07).
+3. Commit `log/` with the day's record (convention: `AUDIT.md`).
 4. Report per the routine prompt (ultra-concise).
 
 ## API access

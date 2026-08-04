@@ -17,9 +17,14 @@ engine/execute.py         map signal -> at most one MOC order (spec below),
                           append to log/trade_log.jsonl
 scripts/alpaca.sh         bash wrapper for ad-hoc Alpaca calls (Claude glue)
 scripts/email.sh          Resend email wrapper (reports)
+scripts/oplog.sh          append a routine-level event to log/ops_log.jsonl
 reference/                backtest reference signals (derived aggregates only)
-log/                      append-only signal + trade logs, committed daily
+log/                      append-only signal + trade + ops logs, committed daily
+HALT                      kill switch (absent normally): present => no orders
 ```
+
+Audit-trail format and the git↔Alpaca reconciliation procedure: **`AUDIT.md`**.
+Operator procedures (liveness, failures, halt/resume): **`RUNBOOK.md`**.
 
 ## The E2 rule (frozen — never modify without a new decision)
 
@@ -61,7 +66,7 @@ first bar.
 ```
 python3 engine/signal_engine.py     # yesterday's-close signal, logged
 python3 engine/execute.py           # at most one MOC order, logged
-git add log/ && git commit          # audit trail (convention: e2bot-07)
+git add log/ && git commit          # audit trail (convention: AUDIT.md)
 ```
 
 Both scripts hard-fail (non-zero exit) on any invalid/stale input — a failed

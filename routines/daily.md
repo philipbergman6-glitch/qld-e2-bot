@@ -23,13 +23,20 @@ IMPORTANT — FAILURE RULE:
 - If ANY script below exits non-zero: do NOT trade, do NOT retry with
   modified inputs, do NOT touch engine/. Send ONE email
   "E2 BOT FAILURE $DATE" with the script name and its stderr (redact any
-  key material), then stop. A missed day self-heals tomorrow by design.
+  key material), then record and push the failure:
+    bash scripts/oplog.sh failure "$DATE <script>: <one-line cause>"
+    git add log/ && git commit -m "E2 daily $DATE: FAILURE <cause>" && git push origin main
+  then stop. A missed day self-heals tomorrow by design.
 
 STEP 0 — Trading day check:
 bash scripts/alpaca.sh clock
-If the market is closed today (holiday), send one email
+If the market is closed today (holiday), record it, push, send one email
 "E2 heartbeat $DATE — market closed, no run" and STOP. (Weekends are
 excluded by cron already.)
+    bash scripts/oplog.sh market-closed "$DATE holiday — no run"
+    git add log/ && git commit -m "E2 daily $DATE: market closed" && git push origin main
+Every trading day must be accounted for by a signal record or an ops record
+(AUDIT.md).
 
 STEP 1 — Compute the signal (yesterday's close):
 python3 engine/signal_engine.py
@@ -37,7 +44,10 @@ Capture the JSON it prints: signal_date, signal_alloc, px, vol, trend.
 
 STEP 2 — Execute (at most one MOC order):
 python3 engine/execute.py
-Capture its output: action taken (order id, side, qty) or "no change".
+Capture its output: action taken (order id, side, qty), "hold", or
+"HALTED by HALT file" (a HALT file at the repo root suppresses all ordering —
+intentional, exit 0, NOT a failure; say "HALTED: <reason>" in the email and
+still commit).
 
 STEP 3 — Account snapshot:
 bash scripts/alpaca.sh account
@@ -57,7 +67,7 @@ history; if unknown, write "n/a".)
 
 STEP 5 — COMMIT AND PUSH (mandatory whenever log/ changed):
 git add log/
-git commit -m "E2 daily $DATE: alloc=${ALLOC}% <order id | no trade>"
+git commit -m "E2 daily $DATE: alloc=${ALLOC}% <order id | no trade | HALTED>"
 git push origin main
 On push failure: pull --rebase and retry once; if it still fails, email
 "E2 BOT FAILURE $DATE — push failed" and stop.
