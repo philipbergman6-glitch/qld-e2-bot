@@ -89,6 +89,7 @@ The failure email names the script and its stderr. **Do not re-run
 | `only N bars; need >= 273` | Feed/entitlement change — investigate before the next run; consider halting (§5). |
 | `ALPACA_* not set` | Fix the routine's env vars in the cloud UI. |
 | push failed | Re-run only the commit+push step from a clone; the decision is what matters. |
+| `commit not on main` | The environment redirected the push to a `claude/*` branch (seen 2026-08-04). Recover it: `git fetch origin 'refs/heads/claude/*:refs/remotes/origin/claude/*'`, then `git merge --ff-only origin/claude/<branch>` on `main` and push. Then fix the routine's branch-push permission — a heartbeat that says "success" while `main` never moved is the trail's worst failure mode. |
 | `invalid allocations` / signal NaN | **Engine-level. Halt (§5) and open a ticket on the map.** |
 
 Then `bash scripts/oplog.sh failure "<one line: date, script, cause>"` and

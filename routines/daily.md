@@ -65,9 +65,21 @@ Notes: <one line, or 'nominal'>"
 (Day P&L = today equity - last equity in log/trade_log.jsonl heartbeat
 history; if unknown, write "n/a".)
 
-STEP 5 — COMMIT AND PUSH (mandatory whenever log/ changed):
+STEP 5 — COMMIT AND PUSH TO main (mandatory whenever log/ changed):
 git add log/
 git commit -m "E2 daily $DATE: alloc=${ALLOC}% <order id | no trade | HALTED>"
-git push origin main
-On push failure: pull --rebase and retry once; if it still fails, email
-"E2 BOT FAILURE $DATE — push failed" and stop.
+git push origin HEAD:main
+On push failure: pull --rebase origin main and retry once; if it still fails,
+email "E2 BOT FAILURE $DATE — push failed" and stop.
+
+STEP 6 — VERIFY THE PUSH LANDED ON main (do NOT skip; a run whose record is
+not on main did not happen, as far as the audit trail is concerned):
+LOCAL=$(git rev-parse HEAD)
+REMOTE=$(git ls-remote origin refs/heads/main | cut -f1)
+[[ "$LOCAL" == "$REMOTE" ]] && echo "push verified on main" || echo "MISMATCH"
+If they differ (e.g. the environment redirected the push to a claude/* branch,
+or main moved on), send ONE email
+"E2 BOT FAILURE $DATE — commit not on main" naming the branch that actually
+received it (git branch -r --contains HEAD) and the two SHAs. Do NOT report
+the day as successful, and do NOT retry with force. The day's record is then
+recovered by hand (RUNBOOK).
