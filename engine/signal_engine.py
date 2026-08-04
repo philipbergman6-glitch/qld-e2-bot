@@ -92,8 +92,13 @@ def alpaca_headers():
     return {"APCA-API-KEY-ID": key, "APCA-API-SECRET-KEY": sec}
 
 
-def fetch_bars():
-    """All daily bars for SYM, adjustment=all, ascending. Returns (df, query).
+def fetch_bars(end_session):
+    """Daily bars for SYM through end_session, adjustment=all, ascending.
+
+    Returns (df, query). The fetch is bounded at the last COMPLETED session:
+    during market hours Alpaca returns today's in-progress daily bar, and the
+    rule may never see a partial close — every term (SMA200/SMA20/vol/vol
+    percentile) is defined on completed closes only (e2bot-09, 2026-08-04).
 
     `query` is the exact (key-free) source query the bars came from; it is
     logged alongside a hash of the bars so a third party can re-fetch and
@@ -101,11 +106,14 @@ def fetch_bars():
     """
     data_ep = os.environ.get("ALPACA_DATA_ENDPOINT", "https://data.alpaca.markets/v2")
     headers = alpaca_headers()
+    # 23:59:59Z, not the bare date: a daily bar is stamped at the session's
+    # open in UTC (e.g. 04:00Z), so a date-only `end` would exclude it.
+    end = f"{end_session}T23:59:59Z"
     bars, token = [], None
     query = None
     while True:
         params = {"timeframe": "1Day", "adjustment": "all", "feed": "sip",
-                  "start": START, "limit": "10000", "sort": "asc"}
+                  "start": START, "end": end, "limit": "10000", "sort": "asc"}
         if query is None:
             query = f"{data_ep}/stocks/{SYM}/bars?{urllib.parse.urlencode(params)}"
         if token:
@@ -187,12 +195,15 @@ def compute_signals(px, ret):
 def main():
     no_log = "--no-log" in sys.argv[1:]
     load_env()
-    df, query = fetch_bars()
+    # Session first: it bounds the fetch, so the in-progress bar never arrives.
+    session = last_completed_session()
+    df, query = fetch_bars(session)
     if len(df) < MIN_BARS:
         fatal(f"only {len(df)} bars; need >= {MIN_BARS} for warmup")
-    session = last_completed_session()
     last_bar = df.index[-1]
     if last_bar != session:
+        # Now a genuine staleness signal: the feed is missing a session it
+        # should already have published.
         fatal(f"stale data: last bar {last_bar}, last completed session {session}")
     ret = df.px.pct_change()
     state = compute_signals(df.px, ret)
