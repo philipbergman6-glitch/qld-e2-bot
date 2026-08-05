@@ -130,10 +130,10 @@
                   margin: 14px 0 6px; }
 
   /* ---------- coverage strip ---------- */
-  .cov { display: flex; gap: 5px; flex-wrap: wrap; align-items: flex-end; }
-  .cov .cell { width: 30px; text-align: center; }
-  .cov .box { height: 30px; border-radius: 5px; border: 1px solid var(--line); display: flex;
-              align-items: center; justify-content: center; font-size: 12px; }
+  .cov { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-end; }
+  .cov .cell { width: 38px; text-align: center; }
+  .cov .box { height: 38px; border-radius: 6px; border: 1px solid var(--line); display: flex;
+              align-items: center; justify-content: center; font-size: 14px; }
   .cov .box.log { background: #0C1F14; border-color: #1B4A30; color: var(--green); }
   .cov .box.ops { background: #081A22; border-color: #1E4756; color: var(--cyan); }
   .cov .box.gap { background: #240D11; border-color: #5A1E26; color: var(--red); }
@@ -249,9 +249,9 @@
     </div>
 
     <div class="panel c5 rise" style="animation-delay:.09s">
-      <div class="panel-h" style="--pc: var(--cyan)"><span class="t">Execution blotter</span>
-        <span class="sub">every run, including no-trade &amp; halted days</span></div>
-      <div class="panel-b scrolly" id="blotter"></div>
+      <div class="panel-h" style="--pc: var(--amber)"><span class="t">Operations timeline</span>
+        <span class="sub">halts · failures · manual events — nothing hidden</span></div>
+      <div class="panel-b feed" id="opsFeed"></div>
     </div>
 
     <div class="panel c7 rise" style="animation-delay:.12s">
@@ -261,9 +261,9 @@
     </div>
 
     <div class="panel c5 rise" style="animation-delay:.15s">
-      <div class="panel-h" style="--pc: var(--amber)"><span class="t">Operations timeline</span>
-        <span class="sub">halts · failures · manual events — nothing hidden</span></div>
-      <div class="panel-b feed" id="opsFeed"></div>
+      <div class="panel-h" style="--pc: var(--cyan)"><span class="t">Execution blotter</span>
+        <span class="sub">every run, including no-trade &amp; halted days</span></div>
+      <div class="panel-b scrolly" id="blotter"></div>
     </div>
 
     <div class="panel c7 rise" style="animation-delay:.18s">
@@ -409,10 +409,11 @@ function kpi(label, value, sub, color) {
     $("heroTitle").textContent = "Forward test — day 1";
     $("heroSub").textContent = "the record starts here; the curve earns itself";
     const resume = OPS.filter(o => o.ev === "resume").pop();
+    const trunc = (s, n=150) => s.length <= n ? esc(s) : esc(s.slice(0, s.lastIndexOf(" ", n))) + "…";
     const evs = OPS.slice(-5).map((o,i,arr) => `
-      <div class="ev ${i===arr.length-1?'hot':''}">
+      <div class="ev ${i===arr.length-1?'hot':''}" title="${esc(o.note)}">
         <div class="when">${o.d} · ${o.at.slice(11,16)} UTC · ${o.ev.toUpperCase()}</div>
-        <div class="what">${esc(o.note)}</div>
+        <div class="what">${trunc(o.note)}</div>
       </div>`).join("");
     $("heroBody").innerHTML = `<div class="golive">
       <div class="left">
@@ -587,23 +588,36 @@ function kpi(label, value, sub, color) {
 (function renderBtChart(){
   const S = BT_STATS;
   $("btChartSub").textContent = `log scale · ${S.start} → ${S.end} · shaded band = engine-verified window`;
-  const W = 1160, H = 380, DH = 84, P = {l:52, r:14, t:14, b:22};
+  const W = 1160, H = 380, DH = 84, P = {l:52, r:76, t:14, b:22};
   const n = BT.length;
   const x = i => P.l + i/(n-1)*(W-P.l-P.r);
   const vmax = Math.max(BT[n-1][1], BT[n-1][2]) * 1.15;
-  const ly = v => P.t + (1 - Math.log(v)/Math.log(vmax)) * (H-P.t-P.b);
+  const vmin = Math.min(...BT.map(r => Math.min(r[1], r[2]))) * 0.9;
+  const lmin = Math.log(vmin), lmax = Math.log(vmax);
+  const ly = v => P.t + (1 - (Math.log(v)-lmin)/(lmax-lmin)) * (H-P.t-P.b);
   function pathOf(col){
     let d = "", step = Math.max(1, Math.floor(n/1400));
-    for (let i = 0; i < n; i += step) d += (d?"L":"M") + x(i).toFixed(1) + "," + ly(Math.max(0.2, BT[i][col])).toFixed(1);
+    for (let i = 0; i < n; i += step) d += (d?"L":"M") + x(i).toFixed(1) + "," + ly(BT[i][col]).toFixed(1);
     d += "L" + x(n-1).toFixed(1) + "," + ly(BT[n-1][col]).toFixed(1);
     return d;
   }
   /* verified window */
   const vi0 = BT.findIndex(r => r[0] >= BT_VERIFIED.start);
-  const gLines = [1,2,5,10,20,50,100].filter(v => v < vmax);
+  const gLines = [0.2,0.5,1,2,5,10,20,50,100].filter(v => v < vmax && v > vmin);
   const yearTicks = [];
   for (let i = 1; i < n; i++) if (BT[i][0].slice(0,4) !== BT[i-1][0].slice(0,4) && +BT[i][0].slice(0,4) % 2 === 0)
-    yearTicks.push({i, y: BT[i][0].slice(0,4)});
+    { if (x(i) > P.l + 28) yearTicks.push({i, y: BT[i][0].slice(0,4)}); }
+  /* episode callouts — the rule's edge is when it steps aside */
+  const idxOf = d => { const i = BT.findIndex(r => r[0] >= d); return i < 0 ? n-1 : i; };
+  const gfc = idxOf("2009-03-09"), bear22 = idxOf("2022-06-16");
+  const callout = (i, col, dx, dy, anchor, txt1, txt2) => {
+    const cx = x(i), cy = ly(BT[i][col]);
+    const ty = cy + dy;
+    return `<line x1="${cx}" y1="${cy + (dy < 0 ? -5 : 5)}" x2="${cx}" y2="${ty + (dy < 0 ? 14 : -12)}" stroke="var(--faint)" stroke-width="0.7"/>
+      <circle cx="${cx}" cy="${cy}" r="3.5" fill="none" stroke="var(--amber)" stroke-width="1.2"/>
+      <text x="${cx + dx}" y="${ty}" text-anchor="${anchor}" font-size="10" font-weight="700" fill="var(--dim)">${txt1}</text>
+      <text x="${cx + dx}" y="${ty + 13}" text-anchor="${anchor}" font-size="9.5" fill="var(--faint)">${txt2}</text>`;
+  };
   /* drawdown subchart */
   const ddY = v => 8 + (-v / 0.9) * (DH - 16);
   let ddPath = `M${x(0)},${ddY(0)}`, step = Math.max(1, Math.floor(n/1400));
@@ -614,12 +628,16 @@ function kpi(label, value, sub, color) {
   <svg id="btSvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Backtest equity curve, log scale">
     <rect x="${x(vi0)}" y="${P.t}" width="${x(n-1)-x(vi0)}" height="${H-P.t-P.b}" fill="#8B7BFF" opacity="0.045"/>
     <line x1="${x(vi0)}" x2="${x(vi0)}" y1="${P.t}" y2="${H-P.b}" stroke="#3A3260" stroke-dasharray="3 4"/>
-    <text x="${x(vi0)+7}" y="${P.t+13}" font-size="9.5" fill="var(--faint)">ENGINE-VERIFIED WINDOW → ${BT_VERIFIED.agreePct}% AGREEMENT</text>
+    <text x="${x(vi0)+7}" y="${P.t+13}" font-size="10" font-weight="700" fill="#8B7BFF" opacity="0.75">ENGINE-VERIFIED WINDOW → ${BT_VERIFIED.agreePct}% AGREEMENT</text>
     ${gLines.map(v=>`<line x1="${P.l}" x2="${W-P.r}" y1="${ly(v)}" y2="${ly(v)}" stroke="var(--line-soft)"/>
       <text x="${P.l-7}" y="${ly(v)+4}" text-anchor="end" font-size="10" fill="var(--faint)">${v}×</text>`).join("")}
     ${yearTicks.map(t=>`<text x="${x(t.i)}" y="${H-6}" text-anchor="middle" font-size="10" fill="var(--faint)">${t.y}</text>`).join("")}
     <path d="${pathOf(2)}" fill="none" stroke="var(--cyan)" stroke-width="1.1" opacity="0.55"/>
     <path d="${pathOf(1)}" fill="none" stroke="#9BA3C9" stroke-width="1.8"/>
+    ${callout(gfc, 2, 24, -46, "start", "2008–09: buy &amp; hold −83%", "rule's worst drawdown, −37.9%, was here")}
+    ${callout(bear22, 2, 10, 40, "start", "2022 bear: avg alloc 21%", "de-risked by the same 8 lines")}
+    <text x="${x(n-1)+7}" y="${ly(BT[n-1][1])+4}" font-size="11" font-weight="700" fill="#B9C0E0">E2 ${BT_STATS.total_x.toFixed(0)}×</text>
+    <text x="${x(n-1)+7}" y="${ly(BT[n-1][2])+4}" font-size="10.5" fill="var(--cyan)" opacity="0.8">B&amp;H ${BT_STATS.bh_total_x.toFixed(0)}×</text>
     <rect id="btHit" x="${P.l}" y="${P.t}" width="${W-P.l-P.r}" height="${H-P.t-P.b}" fill="transparent"/>
     <line id="btCross" x1="0" x2="0" y1="${P.t}" y2="${H-P.b}" stroke="var(--dim)" stroke-width="0.7" opacity="0" pointer-events="none"/>
   </svg>
