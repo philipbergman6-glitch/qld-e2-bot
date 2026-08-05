@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E2 · QLD — forward test terminal</title>
+<style>
+  :root {
+    --bg: #0A0C12;
+    --panel: #10141F;
+    --panel2: #0C0F18;
+    --line: #1C2333;
+    --line-soft: #151B29;
+    --txt: #D9DFEC;
+    --dim: #6E7890;
+    --faint: #47506A;
+    --violet: #8B7BFF;
+    --cyan: #3DC8E8;
+    --green: #2BD576;   /* reserved: rule satisfied / day accounted for */
+    --amber: #FFB020;
+    --red: #FF4D5E;
+    --bt: #7A82A8;      /* backtest desaturated accent */
+    --mono: "SF Mono", "Menlo", "Consolas", "DejaVu Sans Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--txt); font-family: var(--mono);
+         font-size: 13px; font-variant-numeric: tabular-nums;
+         background-image: radial-gradient(ellipse 1400px 520px at 50% -140px, #12182B 0%, var(--bg) 62%); }
+  .sans { font-family: var(--sans); }
+  .up { color: var(--green); } .dn { color: var(--red); } .warn { color: var(--amber); }
+  .vio { color: var(--violet); } .cy { color: var(--cyan); }
+  .dim { color: var(--dim); } .faint { color: var(--faint); }
+  a { color: var(--cyan); text-decoration: none; }
+  :focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+
+  .shell { max-width: 1380px; margin: 0 auto; padding: 0 18px 70px; }
+
+  /* ---------- topbar ---------- */
+  .topbar { display: flex; align-items: center; gap: 14px; padding: 15px 4px 13px;
+            border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .logo { font-size: 15px; font-weight: 700; letter-spacing: 1.5px; }
+  .logo .rule-chip { color: var(--violet); }
+  .logo .dim { font-weight: 400; }
+  .lamp { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px;
+          padding: 3px 10px; border: 1px solid var(--line); border-radius: 20px; color: var(--dim);
+          letter-spacing: 0.5px; }
+  .lamp i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; background: var(--faint); }
+  .lamp.on-live i   { background: var(--violet); box-shadow: 0 0 9px var(--violet); animation: pulse 2.2s infinite; }
+  .lamp.on-paper i  { background: var(--cyan);  box-shadow: 0 0 8px var(--cyan); }
+  .lamp.on-halt i   { background: var(--amber); box-shadow: 0 0 9px var(--amber); animation: pulse 1.1s infinite; }
+  .lamp.on-stale i  { background: var(--red);   box-shadow: 0 0 9px var(--red); animation: pulse 1.1s infinite; }
+  @keyframes pulse { 50% { opacity: 0.35; } }
+  .topbar .spacer { flex: 1; }
+  .asof { font-size: 10.5px; color: var(--dim); text-align: right; line-height: 1.55; }
+  .asof b { color: var(--txt); font-weight: 600; }
+
+  /* ---------- stale banner ---------- */
+  #staleBanner { display: none; margin: 12px 0 0; padding: 11px 16px; border: 1px solid #5A1E26;
+                 background: linear-gradient(180deg, #200D12, #180A0E); border-radius: 8px;
+                 color: var(--red); font-size: 12.5px; letter-spacing: 0.4px; }
+  #staleBanner b { letter-spacing: 1.5px; }
+
+  /* ---------- kpis ---------- */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); gap: 10px; margin: 16px 0 14px; }
+  .kpi { background: linear-gradient(180deg, var(--panel), var(--panel2)); border: 1px solid var(--line);
+         border-radius: 8px; padding: 13px 15px 11px; position: relative; overflow: hidden; }
+  .kpi::before { content:""; position: absolute; top:0; left:0; right:0; height: 2px;
+                 background: var(--kc, var(--line)); opacity:.9; }
+  .kpi .l { font-size: 9.5px; text-transform: uppercase; letter-spacing: 1.6px; color: var(--dim); }
+  .kpi .v { font-size: 22px; margin-top: 6px; letter-spacing: -0.5px; font-weight: 600; }
+  .kpi .s { font-size: 10px; color: var(--faint); margin-top: 4px; line-height: 1.5; }
+
+  /* ---------- grid / panels ---------- */
+  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
+  .panel { background: linear-gradient(180deg, var(--panel), var(--panel2)); border: 1px solid var(--line);
+           border-radius: 8px; overflow: hidden; min-width: 0; }
+  .panel-h { display:flex; align-items: baseline; gap: 10px; padding: 11px 15px 9px;
+             border-bottom: 1px solid var(--line-soft); flex-wrap: wrap; }
+  .panel-h .t { font-size: 11px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; }
+  .panel-h .t::before { content:"▮ "; color: var(--pc, var(--violet)); }
+  .panel-h .sub { font-size: 10px; color: var(--faint); letter-spacing: 0.3px; }
+  .panel-b { padding: 13px 15px 15px; }
+  .c12{grid-column:span 12} .c8{grid-column:span 8} .c7{grid-column:span 7}
+  .c6{grid-column:span 6} .c5{grid-column:span 5} .c4{grid-column:span 4}
+  @media (max-width: 980px){ .c8,.c7,.c6,.c5,.c4{grid-column:span 12} }
+
+  svg { display: block; }
+  svg text { font-family: var(--mono); }
+
+  /* ---------- tables ---------- */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { font-size: 9px; text-transform: uppercase; letter-spacing: 1.3px; color: var(--faint);
+       text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 7.5px 8px; border-bottom: 1px solid var(--line-soft); font-size: 11.5px; white-space: nowrap; }
+  tr:hover td { background: #141B2C; }
+  th.r, td.r { text-align: right; }
+  .scrolly { max-height: 330px; overflow-y: auto; }
+  .scrolly::-webkit-scrollbar { width: 4px; }
+  .scrolly::-webkit-scrollbar-thumb { background: var(--line); }
+
+  .chip { font-size: 9px; letter-spacing: 1px; padding: 2.5px 7px; border-radius: 3px; white-space: nowrap; }
+  .chip.halt { color: var(--amber); border: 1px solid #4E3A14; background: #1E1708; }
+  .chip.order { color: var(--green); border: 1px solid #1B4A30; background: #0A1F14; }
+  .chip.hold { color: var(--cyan); border: 1px solid #1E4756; background: #081D26; }
+  .chip.fail { color: var(--red); border: 1px solid #5A1E26; background: #1F0C10; }
+  .chip.note { color: var(--dim); border: 1px solid var(--line); }
+
+  /* ---------- rule state (signature) ---------- */
+  .flow { display: flex; flex-direction: column; gap: 0; }
+  .cond { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--line);
+          border-radius: 8px; background: var(--panel2); position: relative; }
+  .cond.pass { border-color: #1B4A30; background: linear-gradient(180deg, #0C1A13, #0A1510); }
+  .cond.dimmed { opacity: 0.38; }
+  .cond .tag { font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--dim); min-width: 86px; }
+  .cond .expr { flex: 1; font-size: 13px; letter-spacing: 0.2px; }
+  .cond .expr b { font-weight: 700; }
+  .cond .verdict { font-size: 12px; font-weight: 700; letter-spacing: 1px; }
+  .cond.pass .verdict { color: var(--green); }
+  .connector { width: 2px; height: 18px; margin-left: 40px;
+               background: linear-gradient(180deg, var(--green), var(--violet)); position: relative; }
+  .connector.plain { background: var(--line); }
+  .alloc-out { display: flex; align-items: center; gap: 16px; padding: 15px 16px; border-radius: 8px;
+               border: 1px solid #3A3260; background: linear-gradient(180deg, #171332, #120F26); }
+  .alloc-out .big { font-size: 34px; font-weight: 700; color: var(--violet); letter-spacing: -1px; }
+  .alloc-out .expl { font-size: 10.5px; color: var(--dim); line-height: 1.6; }
+  .alloc-out .expl b { color: var(--txt); }
+  .branch-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1.6px; color: var(--faint);
+                  margin: 14px 0 6px; }
+
+  /* ---------- coverage strip ---------- */
+  .cov { display: flex; gap: 5px; flex-wrap: wrap; align-items: flex-end; }
+  .cov .cell { width: 30px; text-align: center; }
+  .cov .box { height: 30px; border-radius: 5px; border: 1px solid var(--line); display: flex;
+              align-items: center; justify-content: center; font-size: 12px; }
+  .cov .box.log { background: #0C1F14; border-color: #1B4A30; color: var(--green); }
+  .cov .box.ops { background: #081A22; border-color: #1E4756; color: var(--cyan); }
+  .cov .box.gap { background: #240D11; border-color: #5A1E26; color: var(--red); }
+  .cov .d { font-size: 8.5px; color: var(--faint); margin-top: 4px; letter-spacing: 0.3px; }
+  .legend { display: flex; gap: 16px; font-size: 10px; color: var(--dim); margin-top: 12px; flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; }
+
+  /* ---------- ops feed ---------- */
+  .feed { max-height: 330px; overflow-y: auto; }
+  .feed::-webkit-scrollbar { width: 4px; } .feed::-webkit-scrollbar-thumb { background: var(--line); }
+  .fitem { display: flex; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--line-soft); }
+  .fitem:last-child { border-bottom: none; }
+  .fitem .fd { font-size: 10px; color: var(--faint); min-width: 74px; padding-top: 3px; }
+  .fitem .fx { font-size: 11px; color: var(--dim); line-height: 1.5; font-family: var(--sans); }
+  .fitem .fx b { color: var(--txt); font-weight: 600; }
+
+  /* ---------- provenance ---------- */
+  .prov { display: grid; grid-template-columns: 140px 1fr; gap: 7px 16px; font-size: 11px; align-items: baseline; }
+  .prov .k { color: var(--faint); font-size: 9.5px; text-transform: uppercase; letter-spacing: 1.4px; }
+  .prov .v { color: var(--dim); word-break: break-all; line-height: 1.55; }
+  .prov .v.hash { color: var(--cyan); }
+  .prov code { background: #060810; border: 1px solid var(--line); padding: 2px 7px; border-radius: 4px;
+               font-size: 10.5px; color: var(--txt); }
+
+  /* ---------- go-live hero (day-1 state) ---------- */
+  .golive { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  @media (max-width: 980px){ .golive { grid-template-columns: 1fr; } }
+  .golive .left { padding: 26px 28px; border-right: 1px solid var(--line-soft); }
+  @media (max-width: 980px){ .golive .left { border-right: none; border-bottom: 1px solid var(--line-soft); } }
+  .golive .eyebrow { font-size: 10px; letter-spacing: 2.2px; text-transform: uppercase; color: var(--violet); }
+  .golive h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; margin: 10px 0 12px; line-height: 1.15; }
+  .golive p { font-family: var(--sans); font-size: 12.5px; color: var(--dim); line-height: 1.65; max-width: 52ch; }
+  .golive p b { color: var(--txt); font-weight: 600; }
+  .golive .right { padding: 22px 24px; }
+  .tl { border-left: 2px solid var(--line); padding-left: 18px; }
+  .tl .ev { position: relative; padding: 8px 0 10px; }
+  .tl .ev::before { content:""; position: absolute; left: -23.5px; top: 14px; width: 9px; height: 9px;
+                    border-radius: 50%; background: var(--faint); border: 2px solid var(--bg); }
+  .tl .ev.hot::before { background: var(--violet); box-shadow: 0 0 8px var(--violet); }
+  .tl .ev .when { font-size: 9.5px; color: var(--faint); letter-spacing: 0.6px; }
+  .tl .ev .what { font-size: 11.5px; color: var(--dim); margin-top: 3px; line-height: 1.5; font-family: var(--sans); }
+  .tl .ev .what b { color: var(--txt); font-weight: 600; }
+
+  /* ---------- backtest section ---------- */
+  .bt-break { margin: 44px 0 0; padding: 12px 0 0; border-top: 2px solid var(--line); position: relative; }
+  .bt-banner { display: flex; align-items: center; gap: 14px; margin: 16px 0 14px; padding: 12px 16px;
+               border: 1px dashed #3A415C; border-radius: 8px; background: repeating-linear-gradient(
+                 -45deg, #0D101A 0 14px, #0F1320 14px 28px); }
+  .bt-banner .mark { font-size: 11px; font-weight: 700; letter-spacing: 2.5px; color: var(--bt);
+                     border: 1px solid #3A415C; padding: 4px 11px; border-radius: 4px; white-space: nowrap; }
+  .bt-banner .x { font-family: var(--sans); font-size: 11.5px; color: var(--dim); line-height: 1.55; }
+  .bt-banner .x b { color: var(--txt); }
+  .bt .panel-h .t::before { color: var(--bt); }
+  .bt .kpi::before { background: var(--bt); }
+  .bt .kpi .v { color: #A9B0CE; }
+
+  .stat-tbl td { font-size: 12px; }
+  .stat-tbl td:first-child { color: var(--dim); font-size: 10.5px; }
+
+  /* ---------- limitations ---------- */
+  .limits { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; }
+  .limit { padding: 13px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); }
+  .limit h4 { font-size: 11px; letter-spacing: 0.8px; margin-bottom: 6px; color: var(--amber); font-weight: 700; }
+  .limit p { font-family: var(--sans); font-size: 11.5px; color: var(--dim); line-height: 1.6; }
+  .limit p b { color: var(--txt); font-weight: 600; }
+
+  #tooltip { position: fixed; pointer-events: none; display: none; z-index: 99; background: #04060B;
+             border: 1px solid var(--line); color: var(--txt); font-size: 11px;
+             padding: 8px 11px; border-radius: 5px; line-height: 1.6; max-width: 320px;
+             box-shadow: 0 10px 28px rgba(0,0,0,.65); }
+  #tooltip .td { color: var(--cyan); }
+
+  .fine { font-size: 10.5px; color: var(--faint); line-height: 1.75; margin-top: 22px; padding: 0 4px;
+          font-family: var(--sans); }
+  .fine b { color: var(--dim); }
+
+  /* ---------- load sequence ---------- */
+  .rise { opacity: 0; transform: translateY(7px); animation: rise .5s ease forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .rise { animation: none; opacity: 1; transform: none; }
+    .lamp i { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="tooltip"></div>
+<div class="shell">
+
+  <div class="topbar">
+    <span class="logo"><span class="rule-chip">◆</span> E2 <span class="dim">/</span> QLD <span class="dim">— forward test terminal</span></span>
+    <span class="lamp" id="lampLive"><i></i> <span>LIVE</span></span>
+    <span class="lamp on-paper"><i></i> PAPER · ALPACA $100K</span>
+    <span class="lamp" id="lampHalt" style="display:none"><i></i> HALT ACTIVE</span>
+    <span class="spacer"></span>
+    <span class="asof" id="asof"></span>
+  </div>
+
+  <div id="staleBanner"></div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div class="panel c12 rise" id="heroPanel" style="animation-delay:.02s">
+      <div class="panel-h"><span class="t" id="heroTitle">Forward test</span><span class="sub" id="heroSub"></span></div>
+      <div id="heroBody"></div>
+    </div>
+
+    <div class="panel c7 rise" style="animation-delay:.06s">
+      <div class="panel-h"><span class="t">Rule state — today's decision path</span>
+        <span class="sub" id="ruleSub"></span></div>
+      <div class="panel-b" id="rulePanel"></div>
+    </div>
+
+    <div class="panel c5 rise" style="animation-delay:.09s">
+      <div class="panel-h" style="--pc: var(--cyan)"><span class="t">Execution blotter</span>
+        <span class="sub">every run, including no-trade &amp; halted days</span></div>
+      <div class="panel-b scrolly" id="blotter"></div>
+    </div>
+
+    <div class="panel c7 rise" style="animation-delay:.12s">
+      <div class="panel-h"><span class="t">Signal history</span>
+        <span class="sub">allocation the rule produced, session by session</span></div>
+      <div class="panel-b" id="sigHistory"></div>
+    </div>
+
+    <div class="panel c5 rise" style="animation-delay:.15s">
+      <div class="panel-h" style="--pc: var(--amber)"><span class="t">Operations timeline</span>
+        <span class="sub">halts · failures · manual events — nothing hidden</span></div>
+      <div class="panel-b feed" id="opsFeed"></div>
+    </div>
+
+    <div class="panel c7 rise" style="animation-delay:.18s">
+      <div class="panel-h" style="--pc: var(--green)"><span class="t">Audit coverage</span>
+        <span class="sub">every trading day must be accounted for — AUDIT.md §1</span></div>
+      <div class="panel-b" id="covPanel"></div>
+    </div>
+
+    <div class="panel c5 rise" style="animation-delay:.21s">
+      <div class="panel-h" style="--pc: var(--cyan)"><span class="t">Provenance</span>
+        <span class="sub">how to verify this page</span></div>
+      <div class="panel-b" id="provPanel"></div>
+    </div>
+  </div>
+
+  <!-- ==================== BACKTEST (claim, not evidence) ==================== -->
+  <div class="bt-break"></div>
+  <div class="bt">
+    <div class="bt-banner rise" style="animation-delay:.24s">
+      <span class="mark">BACKTEST · NOT LIVE</span>
+      <span class="x">Historical simulation of the frozen E2 rule, 2006–2026. This section is the <b>claim</b>;
+        the forward test above is the <b>evidence</b> being accumulated against it. The shipped engine was
+        independently verified to reproduce this backtest over 2017–2026: <b>99.53% day-level agreement</b>
+        across 2,385 overlapping sessions (98.45% before excluding explained warm-up-depth episodes).</span>
+    </div>
+
+    <div class="kpis rise" id="btKpis" style="animation-delay:.27s"></div>
+
+    <div class="grid">
+      <div class="panel c12 rise" style="animation-delay:.30s">
+        <div class="panel-h"><span class="t">E2 vs QLD buy &amp; hold — growth of 1</span>
+          <span class="sub" id="btChartSub"></span></div>
+        <div class="panel-b" id="btChart"></div>
+      </div>
+
+      <div class="panel c4 rise" style="animation-delay:.33s">
+        <div class="panel-h"><span class="t">Backtest statistics</span><span class="sub" id="btStatSub"></span></div>
+        <div class="panel-b" id="btStats"></div>
+      </div>
+
+      <div class="panel c8 rise" style="animation-delay:.36s">
+        <div class="panel-h"><span class="t">Backtest trade log — all signal changes</span>
+          <span class="sub" id="btTradesSub"></span></div>
+        <div class="panel-b scrolly" id="btTrades"></div>
+      </div>
+
+      <div class="panel c12 rise" style="animation-delay:.39s">
+        <div class="panel-h" style="--pc: var(--amber)"><span class="t">What this page does not prove</span>
+          <span class="sub">stated first, so nobody else has to find it — AUDIT.md §4</span></div>
+        <div class="panel-b limits" id="limits"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fine" id="fine"></div>
+</div>
+
+<script src="data.js"></script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const pct = (v, nd=1) => (v>0?"+":"") + v.toFixed(nd) + "%";
+const money = v => "$" + v.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2});
+const fmtD = iso => { const [y,m,d] = iso.split("-"); return `${["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+m]} ${+d}, ${y}`; };
+const shortD = iso => { const [y,m,d] = iso.split("-"); return `${m}/${d}`; };
+
+const lastSig = SIG[SIG.length - 1];
+const lastTrd = TRD[TRD.length - 1];
+
+/* ---------- halt / live lamps ---------- */
+const haltEvents = OPS.filter(o => o.ev === "halt" || o.ev === "resume");
+const haltActive = haltEvents.length && haltEvents[haltEvents.length-1].ev === "halt";
+if (haltActive) { $("lampHalt").style.display = "inline-flex"; $("lampHalt").classList.add("on-halt"); }
+
+/* ---------- staleness: last expected weekday vs AS_OF ---------- */
+const holidays = new Set(OPS.filter(o => o.ev === "market-closed").map(o => o.d));
+function prevExpectedRunDate(from) {
+  const d = new Date(from + "T12:00:00");
+  for (let i = 0; i < 10; i++) {
+    const iso = d.toISOString().slice(0,10);
+    if (d.getDay() !== 0 && d.getDay() !== 6 && !holidays.has(iso)) return iso;
+    d.setDate(d.getDate() - 1);
+  }
+  return from;
+}
+const todayIso = new Date().toISOString().slice(0,10);
+const expected = prevExpectedRunDate(todayIso);
+const stale = AS_OF < expected;
+if (stale) {
+  $("staleBanner").style.display = "block";
+  $("staleBanner").innerHTML = `<b>STALE DATA</b> — this page renders logs up to <b>${AS_OF}</b>; the most recent
+    expected trading day is <b>${expected}</b>. Run <span style="font-family:var(--mono)">git pull</span> and regenerate,
+    or check the daily routine (RUNBOOK §2: silence is failure). Possible false alarm on an unlogged market holiday.`;
+  $("lampLive").classList.add("on-stale"); $("lampLive").querySelector("span").textContent = "STALE";
+} else {
+  $("lampLive").classList.add("on-live");
+}
+$("asof").innerHTML = `data as of <b>${AS_OF}</b> · source: log/*.jsonl on main<br>nothing on this page is estimated`;
+
+/* ---------- KPIs ---------- */
+function kpi(label, value, sub, color) {
+  return `<div class="kpi" style="--kc:${color}"><div class="l">${label}</div>
+    <div class="v">${value}</div><div class="s">${sub}</div></div>`;
+}
+(function renderKpis(){
+  const k = [];
+  const allocPct = (lastSig.alloc*100) + "%";
+  if (ANCHOR) {
+    const liveEq = TRD.filter(t => t.equity != null && !t.dry);
+    const cur = liveEq[liveEq.length-1];
+    const ret = (cur.equity / ANCHOR.equity - 1) * 100;
+    const sigsSince = SIG.filter(s => s.d >= ANCHOR.d || s.run >= ANCHOR.d);
+    const qldRet = sigsSince.length > 1 ? (lastSig.px / sigsSince[0].px - 1) * 100 : null;
+    const dayN = new Set(liveEq.map(t => t.runEt)).size;
+    k.push(kpi("Equity — 12:00 ET mark", money(cur.equity), `forward test day ${dayN}`, "var(--violet)"));
+    k.push(kpi("Since go-live", `<span class="${ret>=0?'up':'dn'}">${pct(ret,2)}</span>`,
+               `anchor ${money(ANCHOR.equity)} · ${fmtD(ANCHOR.d)}`, ret>=0?"var(--green)":"var(--red)"));
+    k.push(kpi("QLD buy &amp; hold", qldRet==null ? "—" : `<span class="${qldRet>=0?'up':'dn'}">${pct(qldRet,2)}</span>`,
+               qldRet==null ? "meaningful from session 2" : "same window, total-return closes", "var(--cyan)"));
+    k.push(kpi("Position", cur.curQty != null ? `${cur.curQty} <span class="dim" style="font-size:13px">QLD</span>` : "—",
+               cur.tgtQty != null ? `target ${cur.tgtQty} sh @ ref ${cur.refPx ? "$"+cur.refPx.toFixed(2) : "—"}` : "", "var(--cyan)"));
+  } else {
+    k.push(kpi("Forward test", `<span class="vio">DAY 1</span>`, `go-live ${fmtD(AS_OF)} · first order via 12:00 ET run`, "var(--violet)"));
+    k.push(kpi("Account", "$100,000.00", "paper · reset for go-live · 0 positions", "var(--cyan)"));
+  }
+  k.push(kpi("Signal", `<span class="vio">${allocPct}</span>`,
+             `from ${fmtD(lastSig.d)} close · ${haltActive ? "HALT active — not acted on" : "acted on next run"}`, "var(--violet)"));
+  k.push(kpi("QLD last close", "$" + lastSig.px.toFixed(2),
+             `adjusted (splits+divs) · ${lastSig.bars ? lastSig.bars.toLocaleString() : "—"} bars history`, "var(--cyan)"));
+  const gaps = COVERAGE.filter(c => c.st === "gap").length;
+  k.push(kpi("Audit coverage", gaps === 0
+             ? `<span class="up">${COVERAGE.length}/${COVERAGE.length}</span>`
+             : `<span class="dn">${COVERAGE.length-gaps}/${COVERAGE.length}</span>`,
+             gaps === 0 ? "every trading day accounted for" : `${gaps} GAP DAY${gaps>1?"S":""} — investigate`,
+             gaps === 0 ? "var(--green)" : "var(--red)"));
+  $("kpis").innerHTML = k.join("");
+})();
+
+/* ---------- hero ---------- */
+(function renderHero(){
+  if (!ANCHOR) {
+    $("heroTitle").textContent = "Forward test — day 1";
+    $("heroSub").textContent = "the record starts here; the curve earns itself";
+    const resume = OPS.filter(o => o.ev === "resume").pop();
+    const evs = OPS.slice(-5).map((o,i,arr) => `
+      <div class="ev ${i===arr.length-1?'hot':''}">
+        <div class="when">${o.d} · ${o.at.slice(11,16)} UTC · ${o.ev.toUpperCase()}</div>
+        <div class="what">${esc(o.note)}</div>
+      </div>`).join("");
+    $("heroBody").innerHTML = `<div class="golive">
+      <div class="left">
+        <div class="eyebrow">Go-live · ${fmtD(AS_OF)}</div>
+        <h1>Every order this bot will ever place is already decided by the rule.</h1>
+        <p>The E2 signal is computed by a frozen deterministic engine from QLD's own closes — no judgment,
+        no overrides. Each day's decision is committed to git <b>before the market close</b> and matched against
+        Alpaca's independent order record. This page renders that audit trail and nothing else.</p>
+        <p style="margin-top:10px">Current state: signal <b>${lastSig.alloc*100}%</b> from the ${fmtD(lastSig.d)} close.
+        ${resume ? "The dry-run proof of the execution path is in the timeline →" : ""}</p>
+      </div>
+      <div class="right"><div class="tl">${evs}</div></div>
+    </div>`;
+    return;
+  }
+  /* live equity vs QLD, indexed to 100 at anchor */
+  $("heroTitle").textContent = "Forward test — equity vs QLD buy & hold";
+  $("heroSub").textContent = "indexed to 100 at go-live · equity is a 12:00 ET mark";
+  const eqPts = [];
+  const seen = new Set();
+  for (const t of TRD) if (t.equity != null && !t.dry && !seen.has(t.runEt)) { seen.add(t.runEt); eqPts.push({d:t.runEt, v:t.equity}); }
+  const px0 = SIG.find(s => s.run >= ANCHOR.d) || lastSig;
+  const qldPts = SIG.filter(s => s.run >= ANCHOR.d).map(s => ({d:s.run, v: s.px / px0.px * ANCHOR.equity}));
+  const all = [...eqPts, ...qldPts];
+  const W=1160, H=300, P={l:56,r:14,t:16,b:26};
+  const dates = [...new Set(all.map(p=>p.d))].sort();
+  const xi = d => P.l + (dates.indexOf(d) / Math.max(1, dates.length-1)) * (W-P.l-P.r);
+  let lo = Math.min(...all.map(p=>p.v)), hi = Math.max(...all.map(p=>p.v));
+  if (hi - lo < hi*0.01) { lo *= 0.995; hi *= 1.005; }
+  const y = v => P.t + (1 - (v-lo)/(hi-lo)) * (H-P.t-P.b);
+  const path = pts => pts.map((p,i)=>`${i?"L":"M"}${xi(p.d).toFixed(1)},${y(p.v).toFixed(1)}`).join("");
+  const gridY = [lo, (lo+hi)/2, hi];
+  $("heroBody").innerHTML = `<div class="panel-b"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Live equity vs QLD buy and hold">
+    ${gridY.map(v=>`<line x1="${P.l}" x2="${W-P.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line-soft)"/>
+      <text x="${P.l-8}" y="${y(v)+4}" text-anchor="end" font-size="10" fill="var(--faint)">${money(v)}</text>`).join("")}
+    ${dates.map(d=>`<text x="${xi(d)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--faint)">${shortD(d)}</text>`).join("")}
+    <path d="${path(qldPts)}" fill="none" stroke="var(--cyan)" stroke-width="1.6" opacity="0.75"/>
+    <path d="${path(eqPts)}" fill="none" stroke="var(--violet)" stroke-width="2.4"/>
+    ${eqPts.map(p=>`<circle cx="${xi(p.d)}" cy="${y(p.v)}" r="3.4" fill="var(--violet)"/>`).join("")}
+    ${qldPts.map(p=>`<circle cx="${xi(p.d)}" cy="${y(p.v)}" r="2.6" fill="var(--cyan)" opacity="0.8"/>`).join("")}
+  </svg>
+  <div class="legend"><span><i style="background:var(--violet)"></i>E2 forward test (12:00 ET equity mark)</span>
+  <span><i style="background:var(--cyan)"></i>QLD buy &amp; hold, same capital</span>
+  <span class="faint">day 0 not yet invested — first MOC order fills at that day's close</span></div></div>`;
+})();
+
+/* ---------- rule state (signature) ---------- */
+(function renderRule(){
+  const s = lastSig;
+  $("ruleSub").textContent = `inputs from the ${s.d} close · computed ${s.run} · engine/signal_engine.py`;
+  const f2 = v => v.toFixed(2), f3 = v => v.toFixed(3);
+  const trendPass = s.trend;
+  const volElevated = s.vol > s.hi;
+  let html = "";
+  html += `<div class="branch-label">In-trend branch ${trendPass ? "— taken" : "— not taken"}</div><div class="flow">`;
+  html += `<div class="cond ${trendPass?'pass':''}">
+      <span class="tag">Trend</span>
+      <span class="expr">px <b>${f2(s.px)}</b> &nbsp;&gt;&nbsp; SMA200 <b>${f2(s.sma200)}</b></span>
+      <span class="verdict">${trendPass?"TRUE ✓":"FALSE"}</span></div>`;
+  if (trendPass) {
+    html += `<div class="connector"></div>`;
+    html += `<div class="cond ${!volElevated?'pass':''}">
+      <span class="tag">Vol check</span>
+      <span class="expr">vol20 <b>${f3(s.vol)}</b> &nbsp;${volElevated?"&gt;":"&lt;"}&nbsp; p90 threshold <b>${f3(s.hi)}</b></span>
+      <span class="verdict">${volElevated?'<span class="warn">ELEVATED — trim to 50%</span>':"CALM ✓"}</span></div>`;
+    html += `<div class="connector"></div>`;
+  }
+  html += `<div class="alloc-out">
+      <span class="big">${s.alloc*100}%</span>
+      <span class="expl"><b>allocation — the mechanical output.</b><br>
+      No judgment was applied anywhere on this path. Re-run the engine on the same
+      ${s.bars ? s.bars.toLocaleString() : ""}-bar series (fingerprint in Provenance) and it must produce this number.</span></div>`;
+  html += `</div>`;
+  /* untaken branch, shown dimmed so the whole rule is on screen */
+  html += `<div class="branch-label" style="margin-top:18px">${trendPass ? "Below-trend branch — not taken today" : "In-trend branch — not taken today"}</div>`;
+  if (trendPass) {
+    html += `<div class="flow"><div class="cond dimmed">
+      <span class="tag">Re-entry</span>
+      <span class="expr">below trend: alloc 0% — unless px &gt; SMA20 <b>${f2(s.sma20)}</b> and vol &lt; 0.9 × max60 <b>${f3(0.9*s.volmax60)}</b> → re-enter</span>
+      <span class="verdict faint">idle</span></div></div>`;
+  } else {
+    const reentry = s.px > s.sma20 && s.offpeak;
+    html += `<div class="flow"><div class="cond ${reentry?'pass':'dimmed'}">
+      <span class="tag">Re-entry</span>
+      <span class="expr">px <b>${f2(s.px)}</b> vs SMA20 <b>${f2(s.sma20)}</b> · vol <b>${f3(s.vol)}</b> vs 0.9×max60 <b>${f3(0.9*s.volmax60)}</b></span>
+      <span class="verdict">${reentry?"RE-ENTER ✓":"stay out"}</span></div></div>`;
+  }
+  $("rulePanel").innerHTML = html;
+})();
+
+/* ---------- blotter ---------- */
+(function renderBlotter(){
+  const rows = [...TRD].reverse().map(t => {
+    let chip, detail = "";
+    if (t.action.startsWith("HALTED")) { chip = `<span class="chip halt">HALTED</span>`; detail = t.haltReason ? esc(t.haltReason) : ""; }
+    else if (t.action.startsWith("submitted")) { chip = `<span class="chip order">ORDER</span>`; detail = esc(t.action) + (t.orderId ? ` · <span class="cy">${esc(t.orderId.slice(0,8))}…</span>` : ""); }
+    else if (t.action.startsWith("would submit")) { chip = `<span class="chip note">DRY RUN</span>`; detail = esc(t.action); }
+    else { chip = `<span class="chip hold">HOLD</span>`; detail = esc(t.action); }
+    return `<tr><td>${t.runEt}</td><td>${chip}</td>
+      <td class="r">${t.alloc*100}%</td>
+      <td class="r">${t.equity != null ? money(t.equity) : "—"}</td></tr>
+      <tr><td></td><td colspan="3" style="font-family:var(--sans);color:var(--faint);font-size:10.5px;
+        white-space:normal;padding-top:0">${detail}</td></tr>`;
+  }).join("");
+  $("blotter").innerHTML = `<table><thead><tr><th>Run (ET)</th><th>Action</th>
+    <th class="r">Signal</th><th class="r">Equity</th></tr></thead><tbody>${rows}</tbody></table>`;
+})();
+
+/* ---------- signal history ---------- */
+(function renderSigs(){
+  const rows = [...SIG].reverse().map(s => `<tr>
+    <td>${s.d}</td>
+    <td class="r">${s.px.toFixed(2)}</td>
+    <td class="r ${s.trend?'up':'dn'}">${s.trend?"✓":"✗"} <span class="faint">${s.sma200.toFixed(1)}</span></td>
+    <td class="r ${s.vol>s.hi?'warn':'up'}">${s.vol.toFixed(3)} <span class="faint">/ ${s.hi.toFixed(3)}</span></td>
+    <td class="r"><b class="vio">${s.alloc*100}%</b></td>
+    <td class="r">${s.sha ? `<span class="faint" title="${esc(s.sha)}">${s.sha.slice(0,10)}…</span>` : '<span class="faint">—</span>'}</td>
+  </tr>`).join("");
+  $("sigHistory").innerHTML = `<table><thead><tr><th>Session close</th><th class="r">QLD px</th>
+    <th class="r">Trend / SMA200</th><th class="r">Vol / p90</th><th class="r">Alloc</th>
+    <th class="r">Input SHA-256</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="legend" style="margin-top:10px"><span class="faint">one row per engine run · the allocation must follow from its own row — check it by hand against the 8-line rule in README</span></div>`;
+})();
+
+/* ---------- ops feed ---------- */
+(function renderOps(){
+  const icon = { "market-closed":"chip note", "failure":"chip fail", "halt":"chip halt",
+                 "resume":"chip order", "manual":"chip note", "note":"chip note" };
+  $("opsFeed").innerHTML = [...OPS].reverse().map(o => `<div class="fitem">
+    <span class="fd">${o.d}<br><span class="${icon[o.ev]}" style="margin-top:4px;display:inline-block">${o.ev.toUpperCase()}</span></span>
+    <span class="fx">${esc(o.note)}</span></div>`).join("");
+})();
+
+/* ---------- coverage ---------- */
+(function renderCov(){
+  const mark = { log: "✓", ops: "◦", gap: "!" };
+  $("covPanel").innerHTML = `<div class="cov">` + COVERAGE.map(c => `<div class="cell">
+      <div class="box ${c.st}">${mark[c.st]}</div><div class="d">${shortD(c.d)}</div></div>`).join("") + `</div>
+    <div class="legend">
+      <span><i style="background:#0C1F14;border:1px solid #1B4A30"></i>signal + trade record</span>
+      <span><i style="background:#081A22;border:1px solid #1E4756"></i>ops record (holiday · halt · failure)</span>
+      <span><i style="background:#240D11;border:1px solid #5A1E26"></i>GAP — a day with no record is the one failure this system is built to expose</span>
+    </div>`;
+})();
+
+/* ---------- provenance ---------- */
+(function renderProv(){
+  const shaSig = [...SIG].reverse().find(s => s.sha);
+  $("provPanel").innerHTML = `<div class="prov">
+    <span class="k">Input fingerprint</span><span class="v hash">${shaSig ? shaSig.sha : "—"}</span>
+    <span class="k">Series</span><span class="v">${shaSig && shaSig.bars ? shaSig.bars.toLocaleString() + " daily bars · " : ""}SHA-256 of the exact (date, close) series the engine consumed</span>
+    <span class="k">Source query</span><span class="v">${shaSig && shaSig.src ? esc(shaSig.src) : "—"}</span>
+    <span class="k">Witness</span><span class="v">Alpaca paper account PA3KZ09KPX46 — orders &amp; fills are server-side, append-only, not under our control</span>
+    <span class="k">Reproduce</span><span class="v"><code>python3 scripts/build_dashboard_data.py --check</code> — regenerates this page's data from log/*.jsonl and fails on any difference</span>
+    <span class="k">Reconcile</span><span class="v">AUDIT.md §3 — five steps a third party can run without trusting us</span>
+  </div>`;
+})();
+
+/* ================= BACKTEST ================= */
+(function renderBtKpis(){
+  const S = BT_STATS;
+  $("btKpis").innerHTML = [
+    kpi("Growth of 1", S.total_x.toFixed(1) + "×", `QLD buy &amp; hold: ${S.bh_total_x.toFixed(1)}× — same window`, "var(--bt)"),
+    kpi("CAGR", S.cagr.toFixed(1) + "%", `buy &amp; hold ${S.bh_cagr.toFixed(1)}% · ${S.years} years`, "var(--bt)"),
+    kpi("Max drawdown", S.maxdd.toFixed(1) + "%", `buy &amp; hold ${S.bh_maxdd.toFixed(1)}% — the reason this rule exists`, "var(--bt)"),
+    kpi("Sharpe", S.sharpe.toFixed(2), "daily returns, annualized √252", "var(--bt)"),
+    kpi("Signal changes", BT_TRADES.length, `over ${S.years} years — ≈${(BT_TRADES.length/S.years).toFixed(0)}/year`, "var(--bt)"),
+    kpi("Engine agreement", BT_VERIFIED.agreePct + "%", `${BT_VERIFIED.days.toLocaleString()} verified sessions ${BT_VERIFIED.start.slice(0,4)}–${BT_VERIFIED.end.slice(0,4)}`, "var(--bt)"),
+  ].join("");
+})();
+
+(function renderBtChart(){
+  const S = BT_STATS;
+  $("btChartSub").textContent = `log scale · ${S.start} → ${S.end} · shaded band = engine-verified window`;
+  const W = 1160, H = 380, DH = 84, P = {l:52, r:14, t:14, b:22};
+  const n = BT.length;
+  const x = i => P.l + i/(n-1)*(W-P.l-P.r);
+  const vmax = Math.max(BT[n-1][1], BT[n-1][2]) * 1.15;
+  const ly = v => P.t + (1 - Math.log(v)/Math.log(vmax)) * (H-P.t-P.b);
+  function pathOf(col){
+    let d = "", step = Math.max(1, Math.floor(n/1400));
+    for (let i = 0; i < n; i += step) d += (d?"L":"M") + x(i).toFixed(1) + "," + ly(Math.max(0.2, BT[i][col])).toFixed(1);
+    d += "L" + x(n-1).toFixed(1) + "," + ly(BT[n-1][col]).toFixed(1);
+    return d;
+  }
+  /* verified window */
+  const vi0 = BT.findIndex(r => r[0] >= BT_VERIFIED.start);
+  const gLines = [1,2,5,10,20,50,100].filter(v => v < vmax);
+  const yearTicks = [];
+  for (let i = 1; i < n; i++) if (BT[i][0].slice(0,4) !== BT[i-1][0].slice(0,4) && +BT[i][0].slice(0,4) % 2 === 0)
+    yearTicks.push({i, y: BT[i][0].slice(0,4)});
+  /* drawdown subchart */
+  const ddY = v => 8 + (-v / 0.9) * (DH - 16);
+  let ddPath = `M${x(0)},${ddY(0)}`, step = Math.max(1, Math.floor(n/1400));
+  for (let i = 0; i < n; i += step) ddPath += `L${x(i).toFixed(1)},${ddY(BT[i][3]).toFixed(1)}`;
+  ddPath += `L${x(n-1).toFixed(1)},${ddY(BT[n-1][3]).toFixed(1)}L${x(n-1).toFixed(1)},${ddY(0)}Z`;
+
+  $("btChart").innerHTML = `
+  <svg id="btSvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Backtest equity curve, log scale">
+    <rect x="${x(vi0)}" y="${P.t}" width="${x(n-1)-x(vi0)}" height="${H-P.t-P.b}" fill="#8B7BFF" opacity="0.045"/>
+    <line x1="${x(vi0)}" x2="${x(vi0)}" y1="${P.t}" y2="${H-P.b}" stroke="#3A3260" stroke-dasharray="3 4"/>
+    <text x="${x(vi0)+7}" y="${P.t+13}" font-size="9.5" fill="var(--faint)">ENGINE-VERIFIED WINDOW → ${BT_VERIFIED.agreePct}% AGREEMENT</text>
+    ${gLines.map(v=>`<line x1="${P.l}" x2="${W-P.r}" y1="${ly(v)}" y2="${ly(v)}" stroke="var(--line-soft)"/>
+      <text x="${P.l-7}" y="${ly(v)+4}" text-anchor="end" font-size="10" fill="var(--faint)">${v}×</text>`).join("")}
+    ${yearTicks.map(t=>`<text x="${x(t.i)}" y="${H-6}" text-anchor="middle" font-size="10" fill="var(--faint)">${t.y}</text>`).join("")}
+    <path d="${pathOf(2)}" fill="none" stroke="var(--cyan)" stroke-width="1.1" opacity="0.55"/>
+    <path d="${pathOf(1)}" fill="none" stroke="#9BA3C9" stroke-width="1.8"/>
+    <rect id="btHit" x="${P.l}" y="${P.t}" width="${W-P.l-P.r}" height="${H-P.t-P.b}" fill="transparent"/>
+    <line id="btCross" x1="0" x2="0" y1="${P.t}" y2="${H-P.b}" stroke="var(--dim)" stroke-width="0.7" opacity="0" pointer-events="none"/>
+  </svg>
+  <svg viewBox="0 0 ${W} ${DH}" role="img" aria-label="Backtest drawdown">
+    <text x="${P.l-7}" y="14" text-anchor="end" font-size="10" fill="var(--faint)">DD</text>
+    <line x1="${P.l}" x2="${W-P.r}" y1="${ddY(0)}" y2="${ddY(0)}" stroke="var(--line-soft)"/>
+    <path d="${ddPath}" fill="var(--red)" opacity="0.28" stroke="var(--red)" stroke-width="0.7"/>
+    <text x="${W-P.r}" y="${ddY(-0.379)-4}" text-anchor="end" font-size="9.5" fill="var(--red)">max ${BT_STATS.maxdd}%</text>
+  </svg>
+  <div class="legend">
+    <span><i style="background:#9BA3C9"></i>E2 rule (frozen), growth of 1</span>
+    <span><i style="background:var(--cyan);opacity:.6"></i>QLD buy &amp; hold — ends at ${BT_STATS.bh_total_x}× with a ${BT_STATS.bh_maxdd}% drawdown</span>
+    <span class="faint">pre-2017 is unverifiable on the live Alpaca feed (history starts 2016) — stated, not hidden</span>
+  </div>`;
+
+  /* crosshair tooltip */
+  const svg = $("btSvg"), tip = $("tooltip"), cross = $("btCross");
+  svg.addEventListener("mousemove", e => {
+    const r = svg.getBoundingClientRect();
+    const fx = (e.clientX - r.left) / r.width * W;
+    let i = Math.round((fx - P.l) / (W-P.l-P.r) * (n-1));
+    i = Math.max(0, Math.min(n-1, i));
+    const row = BT[i];
+    cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("opacity", "0.5");
+    tip.style.display = "block";
+    tip.style.left = Math.min(window.innerWidth - 340, e.clientX + 14) + "px";
+    tip.style.top = (e.clientY + 14) + "px";
+    tip.innerHTML = `<span class="td">${row[0]}</span><br>E2: <b>${row[1].toFixed(2)}×</b> · B&amp;H: ${row[2].toFixed(2)}×<br>
+      drawdown ${(row[3]*100).toFixed(1)}% · alloc ${row[4]==null?"—":(row[4]*100)+"%"}`;
+  });
+  svg.addEventListener("mouseleave", () => { tip.style.display = "none"; cross.setAttribute("opacity", "0"); });
+})();
+
+(function renderBtStats(){
+  const S = BT_STATS;
+  $("btStatSub").textContent = `${S.start} → ${S.end}`;
+  const row = (k, a, b) => `<tr><td>${k}</td><td class="r"><b>${a}</b></td><td class="r dim">${b}</td></tr>`;
+  $("btStats").innerHTML = `<table class="stat-tbl">
+    <thead><tr><th></th><th class="r">E2 rule</th><th class="r">QLD B&amp;H</th></tr></thead><tbody>
+    ${row("Growth of 1", S.total_x.toFixed(2) + "×", S.bh_total_x.toFixed(2) + "×")}
+    ${row("CAGR", S.cagr.toFixed(2) + "%", S.bh_cagr.toFixed(2) + "%")}
+    ${row("Max drawdown", S.maxdd.toFixed(1) + "%", S.bh_maxdd.toFixed(1) + "%")}
+    ${row("Sharpe (√252)", S.sharpe.toFixed(2), "—")}
+    ${row("Years", S.years, S.years)}
+    ${row("Signal changes", BT_TRADES.length, "0")}
+    </tbody></table>
+    <div class="legend" style="margin-top:12px"><span class="faint">same 2× leveraged instrument, same closes — the rule's entire
+    edge is <b style="color:var(--dim)">when it steps aside</b></span></div>`;
+})();
+
+(function renderBtTrades(){
+  $("btTradesSub").textContent = `${BT_TRADES.length} allocation changes · exec next session after signal`;
+  const rows = [...BT_TRADES].reverse().map(t => {
+    const dir = t.nw > t.prev ? "up" : "dn";
+    const arrow = t.nw > t.prev ? "▲" : "▼";
+    return `<tr><td class="faint">#${t.n}</td><td>${t.sig}</td><td>${t.exec}</td>
+      <td class="r">${t.px.toFixed(2)}</td>
+      <td class="r"><span class="${dir}">${arrow}</span> ${t.prev*100}% → <b>${t.nw*100}%</b></td>
+      <td class="faint" style="font-family:var(--sans)">${esc(t.note || "")}</td></tr>`;
+  }).join("");
+  $("btTrades").innerHTML = `<table><thead><tr><th>#</th><th>Signal</th><th>Exec</th>
+    <th class="r">Px</th><th class="r">Allocation</th><th>Note</th></tr></thead><tbody>${rows}</tbody></table>`;
+})();
+
+/* ---------- limitations ---------- */
+(function renderLimits(){
+  const L = [
+    ["Paper fills, not market reality",
+     "Executions are Alpaca's paper simulation. Fill quality, slippage, and MOC auction behavior with real capital are untested. That is precisely what this forward test exists to bound."],
+    ["Timestamps are self-asserted",
+     "Git commit times are ours. The defence is convention — append-only logs, one commit per run, pushed before the close — <b>plus Alpaca's independent server-side order record</b>, which we cannot edit or back-date. Forging one requires forging both."],
+    ["Bars are hashed, not archived",
+     "The engine stores a SHA-256 fingerprint of the exact price series it consumed, plus the vendor query — not the bars themselves. If the vendor restates history, the old hash stops reproducing. That flags the restatement instead of hiding it, but reproduction then needs a same-vintage feed."],
+    ["Pre-2017 backtest is unverifiable on this feed",
+     "Alpaca's QLD history starts 2016-01-04. The shipped engine was verified against the backtest over 2017–2026 only (99.53% agreement, 2,385 sessions). Everything earlier — including the 2008 crisis behavior — rests on the frozen reference data, not on independently re-computed signals."],
+    ["A backtest is a claim",
+     "The 2006–2026 section below the break is a historical simulation of a rule that was <b>designed with knowledge of that history</b>. The only evidence this page accumulates is the forward test at the top — decided daily, before the close, in public view of its own audit trail."],
+    ["Equity is a 12:00 ET mark",
+     "The daily equity figure is captured when the routine runs at noon ET, not at the official close. Day-over-day comparisons against close-to-close series carry that offset. Logged EOD marks are a planned upgrade."],
+  ];
+  $("limits").innerHTML = L.map(([h,p]) => `<div class="limit"><h4>${h}</h4><p>${p}</p></div>`).join("");
+})();
+
+/* ---------- fine print ---------- */
+$("fine").innerHTML = `<b>How this page is made:</b> a deterministic parser
+(<span style="font-family:var(--mono)">scripts/build_dashboard_data.py</span>) reads the append-only audit logs
+(<span style="font-family:var(--mono)">log/signal_log.jsonl · trade_log.jsonl · ops_log.jsonl</span>) and two frozen
+reference files, and emits the data behind every panel. It hard-fails on any parse mismatch and never publishes partial
+data. No API is called, no credential is used, and no number is estimated or hand-entered. The engine is frozen; the
+rule is 8 lines in README.md; changes require a recorded human decision first. Paper account — this page is a
+forward-test instrument, not investment advice or a solicitation.`;
+</script>
+</body>
+</html>
