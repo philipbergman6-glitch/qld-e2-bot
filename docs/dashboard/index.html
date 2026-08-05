@@ -243,38 +243,36 @@
     </div>
 
     <div class="panel c7 rise" style="animation-delay:.06s">
-      <div class="panel-h"><span class="t">Rule state — today's decision path</span>
+      <div class="panel-h" style="--pc: var(--cyan)"><span class="t">Execution blotter</span>
+        <span class="sub">every run — orders · holds · halts</span></div>
+      <div class="panel-b scrolly" id="blotter"></div>
+    </div>
+
+    <div class="panel c5 rise" style="animation-delay:.09s">
+      <div class="panel-h"><span class="t">Rule state</span>
         <span class="sub" id="ruleSub"></span></div>
       <div class="panel-b" id="rulePanel"></div>
     </div>
 
-    <div class="panel c5 rise" style="animation-delay:.09s">
-      <div class="panel-h" style="--pc: var(--amber)"><span class="t">Operations timeline</span>
-        <span class="sub">halts · failures · manual events — nothing hidden</span></div>
-      <div class="panel-b feed" id="opsFeed"></div>
-    </div>
-
     <div class="panel c7 rise" style="animation-delay:.12s">
-      <div class="panel-h"><span class="t">Signal history</span>
-        <span class="sub">allocation the rule produced, session by session</span></div>
-      <div class="panel-b" id="sigHistory"></div>
+      <div class="panel-h"><span class="t">Signal history</span></div>
+      <div class="panel-b scrolly" id="sigHistory"></div>
     </div>
 
     <div class="panel c5 rise" style="animation-delay:.15s">
-      <div class="panel-h" style="--pc: var(--cyan)"><span class="t">Execution blotter</span>
-        <span class="sub">every run, including no-trade &amp; halted days</span></div>
-      <div class="panel-b scrolly" id="blotter"></div>
+      <div class="panel-h" style="--pc: var(--amber)"><span class="t">Operations timeline</span>
+        <span class="sub">halts · failures · manual events</span></div>
+      <div class="panel-b feed" id="opsFeed"></div>
     </div>
 
     <div class="panel c7 rise" style="animation-delay:.18s">
       <div class="panel-h" style="--pc: var(--green)"><span class="t">Audit coverage</span>
-        <span class="sub">every trading day must be accounted for — AUDIT.md §1</span></div>
+        <span class="sub">every trading day accounted for</span></div>
       <div class="panel-b" id="covPanel"></div>
     </div>
 
     <div class="panel c5 rise" style="animation-delay:.21s">
-      <div class="panel-h" style="--pc: var(--cyan)"><span class="t">Provenance</span>
-        <span class="sub">how to verify this page</span></div>
+      <div class="panel-h" style="--pc: var(--cyan)"><span class="t">Provenance</span></div>
       <div class="panel-b" id="provPanel"></div>
     </div>
   </div>
@@ -284,10 +282,8 @@
   <div class="bt">
     <div class="bt-banner rise" style="animation-delay:.24s">
       <span class="mark">BACKTEST · NOT LIVE</span>
-      <span class="x">Historical simulation of the frozen E2 rule, 2006–2026. This section is the <b>claim</b>;
-        the forward test above is the <b>evidence</b> being accumulated against it. The shipped engine was
-        independently verified to reproduce this backtest over 2017–2026: <b>99.53% day-level agreement</b>
-        across 2,385 overlapping sessions (98.45% before excluding explained warm-up-depth episodes).</span>
+      <span class="x">Frozen E2 rule, 2006–2026. Live engine independently verified against it:
+        <b>99.53% agreement</b>, 2,385 sessions (2017–2026).</span>
     </div>
 
     <div class="kpis rise" id="btKpis" style="animation-delay:.27s"></div>
@@ -311,8 +307,8 @@
       </div>
 
       <div class="panel c12 rise" style="animation-delay:.39s">
-        <div class="panel-h" style="--pc: var(--amber)"><span class="t">What this page does not prove</span>
-          <span class="sub">stated first, so nobody else has to find it — AUDIT.md §4</span></div>
+        <div class="panel-h" style="--pc: var(--amber)"><span class="t">Limitations</span>
+          <span class="sub">AUDIT.md §4</span></div>
         <div class="panel-b limits" id="limits"></div>
       </div>
     </div>
@@ -406,27 +402,14 @@ function kpi(label, value, sub, color) {
 /* ---------- hero ---------- */
 (function renderHero(){
   if (!ANCHOR) {
-    $("heroTitle").textContent = "Forward test — day 1";
-    $("heroSub").textContent = "the record starts here; the curve earns itself";
-    const resume = OPS.filter(o => o.ev === "resume").pop();
-    const trunc = (s, n=150) => s.length <= n ? esc(s) : esc(s.slice(0, s.lastIndexOf(" ", n))) + "…";
-    const evs = OPS.slice(-5).map((o,i,arr) => `
-      <div class="ev ${i===arr.length-1?'hot':''}" title="${esc(o.note)}">
-        <div class="when">${o.d} · ${o.at.slice(11,16)} UTC · ${o.ev.toUpperCase()}</div>
-        <div class="what">${trunc(o.note)}</div>
-      </div>`).join("");
-    $("heroBody").innerHTML = `<div class="golive">
-      <div class="left">
-        <div class="eyebrow">Go-live · ${fmtD(AS_OF)}</div>
-        <h1>Every order this bot will ever place is already decided by the rule.</h1>
-        <p>The E2 signal is computed by a frozen deterministic engine from QLD's own closes — no judgment,
-        no overrides. Each day's decision is committed to git <b>before the market close</b> and matched against
-        Alpaca's independent order record. This page renders that audit trail and nothing else.</p>
-        <p style="margin-top:10px">Current state: signal <b>${lastSig.alloc*100}%</b> from the ${fmtD(lastSig.d)} close.
-        ${resume ? "The dry-run proof of the execution path is in the timeline →" : ""}</p>
-      </div>
-      <div class="right"><div class="tl">${evs}</div></div>
-    </div>`;
+    $("heroPanel").style.display = "none";
+    const strip = document.createElement("div");
+    strip.className = "kpi rise c12";
+    strip.style.cssText = "--kc:var(--violet);grid-column:span 12;display:flex;align-items:baseline;gap:18px;padding:11px 15px";
+    strip.innerHTML = `<span class="l" style="color:var(--violet)">GO-LIVE ${fmtD(AS_OF)}</span>
+      <span style="font-size:12px" class="dim">signal <b class="vio">${lastSig.alloc*100}%</b> from the ${fmtD(lastSig.d)} close
+      · first order via the 12:00 ET run · equity curve starts with the first fill</span>`;
+    document.querySelector(".grid").prepend(strip);
     return;
   }
   /* live equity vs QLD, indexed to 100 at anchor */
@@ -467,40 +450,31 @@ function kpi(label, value, sub, color) {
   const f2 = v => v.toFixed(2), f3 = v => v.toFixed(3);
   const trendPass = s.trend;
   const volElevated = s.vol > s.hi;
-  let html = "";
-  html += `<div class="branch-label">In-trend branch ${trendPass ? "— taken" : "— not taken"}</div><div class="flow">`;
+  let html = `<div class="flow">`;
   html += `<div class="cond ${trendPass?'pass':''}">
       <span class="tag">Trend</span>
-      <span class="expr">px <b>${f2(s.px)}</b> &nbsp;&gt;&nbsp; SMA200 <b>${f2(s.sma200)}</b></span>
+      <span class="expr">px <b>${f2(s.px)}</b> &gt; SMA200 <b>${f2(s.sma200)}</b></span>
       <span class="verdict">${trendPass?"TRUE ✓":"FALSE"}</span></div>`;
   if (trendPass) {
     html += `<div class="connector"></div>`;
     html += `<div class="cond ${!volElevated?'pass':''}">
-      <span class="tag">Vol check</span>
-      <span class="expr">vol20 <b>${f3(s.vol)}</b> &nbsp;${volElevated?"&gt;":"&lt;"}&nbsp; p90 threshold <b>${f3(s.hi)}</b></span>
-      <span class="verdict">${volElevated?'<span class="warn">ELEVATED — trim to 50%</span>':"CALM ✓"}</span></div>`;
+      <span class="tag">Vol</span>
+      <span class="expr">vol20 <b>${f3(s.vol)}</b> ${volElevated?"&gt;":"&lt;"} p90 <b>${f3(s.hi)}</b></span>
+      <span class="verdict">${volElevated?'<span class="warn">ELEVATED → 50%</span>':"CALM ✓"}</span></div>`;
     html += `<div class="connector"></div>`;
+  } else {
+    const reentry = s.px > s.sma20 && s.offpeak;
+    html += `<div class="connector plain"></div>`;
+    html += `<div class="cond ${reentry?'pass':''}">
+      <span class="tag">Re-entry</span>
+      <span class="expr">px <b>${f2(s.px)}</b> vs SMA20 <b>${f2(s.sma20)}</b> · vol <b>${f3(s.vol)}</b> vs <b>${f3(0.9*s.volmax60)}</b></span>
+      <span class="verdict">${reentry?"RE-ENTER ✓":"STAY OUT"}</span></div>`;
+    html += `<div class="connector plain"></div>`;
   }
   html += `<div class="alloc-out">
       <span class="big">${s.alloc*100}%</span>
-      <span class="expl"><b>allocation — the mechanical output.</b><br>
-      No judgment was applied anywhere on this path. Re-run the engine on the same
-      ${s.bars ? s.bars.toLocaleString() : ""}-bar series (fingerprint in Provenance) and it must produce this number.</span></div>`;
+      <span class="expl">mechanical output — same inputs, same number, every time</span></div>`;
   html += `</div>`;
-  /* untaken branch, shown dimmed so the whole rule is on screen */
-  html += `<div class="branch-label" style="margin-top:18px">${trendPass ? "Below-trend branch — not taken today" : "In-trend branch — not taken today"}</div>`;
-  if (trendPass) {
-    html += `<div class="flow"><div class="cond dimmed">
-      <span class="tag">Re-entry</span>
-      <span class="expr">below trend: alloc 0% — unless px &gt; SMA20 <b>${f2(s.sma20)}</b> and vol &lt; 0.9 × max60 <b>${f3(0.9*s.volmax60)}</b> → re-enter</span>
-      <span class="verdict faint">idle</span></div></div>`;
-  } else {
-    const reentry = s.px > s.sma20 && s.offpeak;
-    html += `<div class="flow"><div class="cond ${reentry?'pass':'dimmed'}">
-      <span class="tag">Re-entry</span>
-      <span class="expr">px <b>${f2(s.px)}</b> vs SMA20 <b>${f2(s.sma20)}</b> · vol <b>${f3(s.vol)}</b> vs 0.9×max60 <b>${f3(0.9*s.volmax60)}</b></span>
-      <span class="verdict">${reentry?"RE-ENTER ✓":"stay out"}</span></div></div>`;
-  }
   $("rulePanel").innerHTML = html;
 })();
 
@@ -508,7 +482,7 @@ function kpi(label, value, sub, color) {
 (function renderBlotter(){
   const rows = [...TRD].reverse().map(t => {
     let chip, detail = "";
-    if (t.action.startsWith("HALTED")) { chip = `<span class="chip halt">HALTED</span>`; detail = t.haltReason ? esc(t.haltReason) : ""; }
+    if (t.action.startsWith("HALTED")) { chip = `<span class="chip halt">HALTED</span>`; detail = t.haltReason ? esc(t.haltReason.length > 90 ? t.haltReason.slice(0,90) + "…" : t.haltReason) : ""; }
     else if (t.action.startsWith("submitted")) { chip = `<span class="chip order">ORDER</span>`; detail = esc(t.action) + (t.orderId ? ` · <span class="cy">${esc(t.orderId.slice(0,8))}…</span>` : ""); }
     else if (t.action.startsWith("would submit")) { chip = `<span class="chip note">DRY RUN</span>`; detail = esc(t.action); }
     else { chip = `<span class="chip hold">HOLD</span>`; detail = esc(t.action); }
@@ -534,17 +508,17 @@ function kpi(label, value, sub, color) {
   </tr>`).join("");
   $("sigHistory").innerHTML = `<table><thead><tr><th>Session close</th><th class="r">QLD px</th>
     <th class="r">Trend / SMA200</th><th class="r">Vol / p90</th><th class="r">Alloc</th>
-    <th class="r">Input SHA-256</th></tr></thead><tbody>${rows}</tbody></table>
-    <div class="legend" style="margin-top:10px"><span class="faint">one row per engine run · the allocation must follow from its own row — check it by hand against the 8-line rule in README</span></div>`;
+    <th class="r">Input SHA-256</th></tr></thead><tbody>${rows}</tbody></table>`;
 })();
 
 /* ---------- ops feed ---------- */
 (function renderOps(){
   const icon = { "market-closed":"chip note", "failure":"chip fail", "halt":"chip halt",
                  "resume":"chip order", "manual":"chip note", "note":"chip note" };
-  $("opsFeed").innerHTML = [...OPS].reverse().map(o => `<div class="fitem">
+  const trunc = (s, n=120) => s.length <= n ? esc(s) : esc(s.slice(0, s.lastIndexOf(" ", n))) + "…";
+  $("opsFeed").innerHTML = [...OPS].reverse().map(o => `<div class="fitem" title="${esc(o.note)}">
     <span class="fd">${o.d}<br><span class="${icon[o.ev]}" style="margin-top:4px;display:inline-block">${o.ev.toUpperCase()}</span></span>
-    <span class="fx">${esc(o.note)}</span></div>`).join("");
+    <span class="fx">${trunc(o.note)}</span></div>`).join("");
 })();
 
 /* ---------- coverage ---------- */
@@ -553,9 +527,9 @@ function kpi(label, value, sub, color) {
   $("covPanel").innerHTML = `<div class="cov">` + COVERAGE.map(c => `<div class="cell">
       <div class="box ${c.st}">${mark[c.st]}</div><div class="d">${shortD(c.d)}</div></div>`).join("") + `</div>
     <div class="legend">
-      <span><i style="background:#0C1F14;border:1px solid #1B4A30"></i>signal + trade record</span>
-      <span><i style="background:#081A22;border:1px solid #1E4756"></i>ops record (holiday · halt · failure)</span>
-      <span><i style="background:#240D11;border:1px solid #5A1E26"></i>GAP — a day with no record is the one failure this system is built to expose</span>
+      <span><i style="background:#0C1F14;border:1px solid #1B4A30"></i>signal + trade</span>
+      <span><i style="background:#081A22;border:1px solid #1E4756"></i>ops record</span>
+      <span><i style="background:#240D11;border:1px solid #5A1E26"></i>GAP</span>
     </div>`;
 })();
 
@@ -563,12 +537,11 @@ function kpi(label, value, sub, color) {
 (function renderProv(){
   const shaSig = [...SIG].reverse().find(s => s.sha);
   $("provPanel").innerHTML = `<div class="prov">
-    <span class="k">Input fingerprint</span><span class="v hash">${shaSig ? shaSig.sha : "—"}</span>
-    <span class="k">Series</span><span class="v">${shaSig && shaSig.bars ? shaSig.bars.toLocaleString() + " daily bars · " : ""}SHA-256 of the exact (date, close) series the engine consumed</span>
-    <span class="k">Source query</span><span class="v">${shaSig && shaSig.src ? esc(shaSig.src) : "—"}</span>
-    <span class="k">Witness</span><span class="v">Alpaca paper account PA3KZ09KPX46 — orders &amp; fills are server-side, append-only, not under our control</span>
-    <span class="k">Reproduce</span><span class="v"><code>python3 scripts/build_dashboard_data.py --check</code> — regenerates this page's data from log/*.jsonl and fails on any difference</span>
-    <span class="k">Reconcile</span><span class="v">AUDIT.md §3 — five steps a third party can run without trusting us</span>
+    <span class="k">Input SHA-256</span><span class="v hash">${shaSig ? shaSig.sha : "—"}</span>
+    <span class="k">Series</span><span class="v">${shaSig && shaSig.bars ? shaSig.bars.toLocaleString() + " daily bars · " : ""}Alpaca SIP, adjustment=all</span>
+    <span class="k">Witness</span><span class="v">Alpaca paper PA3KZ09KPX46 — server-side orders &amp; fills</span>
+    <span class="k">Reproduce</span><span class="v"><code>python3 scripts/build_dashboard_data.py --check</code></span>
+    <span class="k">Reconcile</span><span class="v">AUDIT.md §3</span>
   </div>`;
 })();
 
@@ -650,7 +623,6 @@ function kpi(label, value, sub, color) {
   <div class="legend">
     <span><i style="background:#9BA3C9"></i>E2 rule (frozen), growth of 1</span>
     <span><i style="background:var(--cyan);opacity:.6"></i>QLD buy &amp; hold — ends at ${BT_STATS.bh_total_x}× with a ${BT_STATS.bh_maxdd}% drawdown</span>
-    <span class="faint">pre-2017 is unverifiable on the live Alpaca feed (history starts 2016) — stated, not hidden</span>
   </div>`;
 
   /* crosshair tooltip */
@@ -683,9 +655,7 @@ function kpi(label, value, sub, color) {
     ${row("Sharpe (√252)", S.sharpe.toFixed(2), "—")}
     ${row("Years", S.years, S.years)}
     ${row("Signal changes", BT_TRADES.length, "0")}
-    </tbody></table>
-    <div class="legend" style="margin-top:12px"><span class="faint">same 2× leveraged instrument, same closes — the rule's entire
-    edge is <b style="color:var(--dim)">when it steps aside</b></span></div>`;
+    </tbody></table>`;
 })();
 
 (function renderBtTrades(){
@@ -705,30 +675,20 @@ function kpi(label, value, sub, color) {
 /* ---------- limitations ---------- */
 (function renderLimits(){
   const L = [
-    ["Paper fills, not market reality",
-     "Executions are Alpaca's paper simulation. Fill quality, slippage, and MOC auction behavior with real capital are untested. That is precisely what this forward test exists to bound."],
-    ["Timestamps are self-asserted",
-     "Git commit times are ours. The defence is convention — append-only logs, one commit per run, pushed before the close — <b>plus Alpaca's independent server-side order record</b>, which we cannot edit or back-date. Forging one requires forging both."],
-    ["Bars are hashed, not archived",
-     "The engine stores a SHA-256 fingerprint of the exact price series it consumed, plus the vendor query — not the bars themselves. If the vendor restates history, the old hash stops reproducing. That flags the restatement instead of hiding it, but reproduction then needs a same-vintage feed."],
-    ["Pre-2017 backtest is unverifiable on this feed",
-     "Alpaca's QLD history starts 2016-01-04. The shipped engine was verified against the backtest over 2017–2026 only (99.53% agreement, 2,385 sessions). Everything earlier — including the 2008 crisis behavior — rests on the frozen reference data, not on independently re-computed signals."],
-    ["A backtest is a claim",
-     "The 2006–2026 section below the break is a historical simulation of a rule that was <b>designed with knowledge of that history</b>. The only evidence this page accumulates is the forward test at the top — decided daily, before the close, in public view of its own audit trail."],
-    ["Equity is a 12:00 ET mark",
-     "The daily equity figure is captured when the routine runs at noon ET, not at the official close. Day-over-day comparisons against close-to-close series carry that offset. Logged EOD marks are a planned upgrade."],
+    "Paper fills — Alpaca simulation, not market reality",
+    "Commit timestamps are self-asserted; Alpaca's order record is the independent witness",
+    "Bars are SHA-256 hashed, not archived — a vendor restatement is flagged, not hidden",
+    "Pre-2017 backtest unverifiable on this feed (Alpaca QLD history starts 2016)",
+    "The backtest is a claim; the forward test above is the evidence",
+    "Equity is a 12:00 ET mark, not the official close",
   ];
-  $("limits").innerHTML = L.map(([h,p]) => `<div class="limit"><h4>${h}</h4><p>${p}</p></div>`).join("");
+  $("limits").innerHTML = `<ul style="list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:6px 26px">` +
+    L.map(t => `<li style="font-size:11px;color:var(--dim);line-height:1.6"><span class="warn">△</span>&nbsp; ${t}</li>`).join("") + `</ul>`;
 })();
 
 /* ---------- fine print ---------- */
-$("fine").innerHTML = `<b>How this page is made:</b> a deterministic parser
-(<span style="font-family:var(--mono)">scripts/build_dashboard_data.py</span>) reads the append-only audit logs
-(<span style="font-family:var(--mono)">log/signal_log.jsonl · trade_log.jsonl · ops_log.jsonl</span>) and two frozen
-reference files, and emits the data behind every panel. It hard-fails on any parse mismatch and never publishes partial
-data. No API is called, no credential is used, and no number is estimated or hand-entered. The engine is frozen; the
-rule is 8 lines in README.md; changes require a recorded human decision first. Paper account — this page is a
-forward-test instrument, not investment advice or a solicitation.`;
+$("fine").innerHTML = `Generated from <span style="font-family:var(--mono)">log/*.jsonl</span> by a deterministic
+parser — no API calls, no estimates, no hand-entered numbers. Paper account. Not investment advice.`;
 </script>
 </body>
 </html>
