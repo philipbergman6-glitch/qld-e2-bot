@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate docs/dashboard/data.js from log/*.jsonl + frozen reference/ CSVs.
+"""Regenerate docs/dashboard/data.js from log/*.jsonl.
 
 Deterministic, no LLM, no network, no credentials (e2bot-10 / dashboard Q3:
 logs-only). HARD-FAILS on any parse mismatch — never publishes partial or
@@ -11,8 +11,6 @@ Sources
   log/trade_log.jsonl           execution records (live; `equity` only on
                                 non-halted runs)
   log/ops_log.jsonl             routine-level events (live)
-  reference/e2_backtest_daily.csv    frozen backtest daily series (2006-2026)
-  reference/e2_backtest_trades.csv   frozen backtest trade log (200 trades)
 
 Go-live anchor (dashboard Q6): the first trade_log record carrying an
 `equity` field. Cross-checked against the ops_log `resume` event — if an
@@ -24,9 +22,7 @@ Output is deterministic: "as of" derives from the newest log record, never
 from the wall clock, so --check reproduces byte-identically on any day.
 """
 
-import csv
 import json
-import math
 import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -36,16 +32,9 @@ REPO = Path(__file__).resolve().parent.parent
 SIGNAL_LOG = REPO / "log" / "signal_log.jsonl"
 TRADE_LOG = REPO / "log" / "trade_log.jsonl"
 OPS_LOG = REPO / "log" / "ops_log.jsonl"
-BT_DAILY = REPO / "reference" / "e2_backtest_daily.csv"
-BT_TRADES = REPO / "reference" / "e2_backtest_trades.csv"
 OUT = REPO / "docs" / "dashboard" / "data.js"
 
 ET = ZoneInfo("America/New_York")
-
-# Engine-vs-backtest verification window (e2bot05-verification-report.md).
-VERIFIED_START = "2017-01-31"
-VERIFIED_END = "2026-07-28"
-
 
 class ParseError(RuntimeError):
     pass
@@ -200,103 +189,6 @@ def coverage(sigs, trades, ops):
 
 
 # --------------------------------------------------------------------------
-# Frozen backtest
-# --------------------------------------------------------------------------
-
-def read_ref_csv(path, expect_header):
-    if not path.exists():
-        fail(f"{path} missing")
-    rows = []
-    with path.open(encoding="utf-8") as f:
-        rd = csv.reader(ln for ln in f if not ln.startswith("#"))
-        hdr = next(rd, None)
-        if hdr != expect_header:
-            fail(f"{path.name}: header {hdr} != expected {expect_header}")
-        rows.extend(rd)
-    if not rows:
-        fail(f"{path.name} has no data rows")
-    return rows
-
-
-def parse_backtest():
-    rows = read_ref_csv(BT_DAILY, ["Period", "QLD_px", "QLD_ret",
-                                   "Signal_alloc", "Effective_alloc", "New_ret"])
-    days = []
-    prev = None
-    for r in rows:
-        d = r[0]
-        if prev is not None and d <= prev:
-            fail(f"backtest daily: dates out of order at {d}")
-        prev = d
-        days.append({
-            "d": d,
-            "px": float(r[1]),
-            "alloc": float(r[3]) if r[3] != "" else None,
-            "ret": float(r[5]) if r[5] != "" else None,
-        })
-    # Curve starts at the first day the frozen model produced a return.
-    start = next((i for i, x in enumerate(days) if x["ret"] is not None), None)
-    if start is None:
-        fail("backtest daily: no New_ret values at all")
-    eq = 1.0
-    qld0 = days[start - 1]["px"] if start > 0 else days[start]["px"]
-    curve = []
-    peak = 1.0
-    for x in days[start:]:
-        eq *= 1.0 + x["ret"]
-        peak = max(peak, eq)
-        curve.append({
-            "d": x["d"],
-            "eq": eq,
-            "bh": x["px"] / qld0,
-            "dd": eq / peak - 1.0,
-            "alloc": x["alloc"],
-        })
-    return days, curve, start
-
-
-def bt_stats(curve):
-    d0, d1 = curve[0]["d"], curve[-1]["d"]
-    years = (date.fromisoformat(d1) - date.fromisoformat(d0)).days / 365.25
-    total = curve[-1]["eq"]
-    bh_total = curve[-1]["bh"]
-    cagr = total ** (1 / years) - 1
-    bh_cagr = bh_total ** (1 / years) - 1
-    maxdd = min(c["dd"] for c in curve)
-    bh_peak, bh_maxdd = 0.0, 0.0
-    for c in curve:
-        bh_peak = max(bh_peak, c["bh"])
-        bh_maxdd = min(bh_maxdd, c["bh"] / bh_peak - 1.0)
-    rets = [curve[i]["eq"] / curve[i - 1]["eq"] - 1 for i in range(1, len(curve))]
-    mean = sum(rets) / len(rets)
-    var = sum((r - mean) ** 2 for r in rets) / (len(rets) - 1)
-    sharpe = mean / math.sqrt(var) * math.sqrt(252) if var > 0 else 0.0
-    return {
-        "start": d0, "end": d1, "years": round(years, 1),
-        "total_x": round(total, 2), "bh_total_x": round(bh_total, 2),
-        "cagr": round(cagr * 100, 2), "bh_cagr": round(bh_cagr * 100, 2),
-        "maxdd": round(maxdd * 100, 1), "bh_maxdd": round(bh_maxdd * 100, 1),
-        "sharpe": round(sharpe, 2),
-    }
-
-
-def parse_bt_trades():
-    rows = read_ref_csv(BT_TRADES, ["Trade#", "Signal_date", "Exec_date",
-                                    "Exec_price", "Effective_from",
-                                    "Prev_alloc", "New_alloc", "Note"])
-    out = []
-    for r in rows:
-        out.append({
-            "n": int(r[0]), "sig": r[1], "exec": r[2],
-            "px": float(r[3]), "eff": r[4],
-            "prev": float(r[5]), "new": float(r[6]), "note": r[7],
-        })
-    if [t["n"] for t in out] != list(range(1, len(out) + 1)):
-        fail("backtest trades: Trade# not a contiguous 1..N sequence")
-    return out
-
-
-# --------------------------------------------------------------------------
 # Emit
 # --------------------------------------------------------------------------
 
@@ -315,14 +207,14 @@ def jstr(s):
     return json.dumps(s, ensure_ascii=False)
 
 
-def emit(sigs, trades, ops, anchor, cov, curve, stats, bt_trades):
+def emit(sigs, trades, ops, anchor, cov):
     lines = []
     add = lines.append
     as_of = max([s["run"] for s in sigs] + [t["run_et"] for t in trades]
                 + [o["date"] for o in ops])
 
-    add(f"// ===== E2 dashboard data — derived from log/*.jsonl + frozen "
-        f"reference/, latest log {as_of} =====")
+    add(f"// ===== E2 dashboard data — derived from log/*.jsonl, "
+        f"latest log {as_of} =====")
     add("// Regenerate: python3 scripts/build_dashboard_data.py  "
         "(--check verifies byte-identity). NEVER hand-edit.")
     add(f'const AS_OF = "{as_of}";')
@@ -388,25 +280,6 @@ def emit(sigs, trades, ops, anchor, cov, curve, stats, bt_trades):
         add(f'{{d:{jstr(c["d"])},st:{jstr(c["st"])}}},')
     add("];")
 
-    # -- backtest (frozen)
-    add(f'const BT_VERIFIED = {{start:"{VERIFIED_START}",end:"{VERIFIED_END}",'
-        f'agreePct:99.53,agreeRawPct:98.45,days:2385}};')
-    add("const BT_STATS = " + json.dumps(stats) + ";")
-    add("// [date, strategy equity (x), QLD buy&hold (x), drawdown, alloc]")
-    add("const BT = [")
-    for c in curve:
-        add(f'[{jstr(c["d"])},{jnum(c["eq"], 4)},{jnum(c["bh"], 4)},'
-            f'{jnum(c["dd"], 4)},{jnum(c["alloc"], 2)}],')
-    add("];")
-    add("const BT_TRADES = [")
-    for t in bt_trades:
-        add("{" + ",".join([
-            f'n:{t["n"]}', f'sig:{jstr(t["sig"])}', f'exec:{jstr(t["exec"])}',
-            f'px:{jnum(t["px"], 4)}', f'eff:{jstr(t["eff"])}',
-            f'prev:{jnum(t["prev"], 2)}', f'nw:{jnum(t["new"], 2)}',
-            f'note:{jstr(t["note"])}',
-        ]) + "},")
-    add("];")
     return "\n".join(lines) + "\n"
 
 
@@ -416,10 +289,7 @@ def main():
     ops = parse_ops()
     anchor = derive_anchor(trades, ops)
     cov = coverage(sigs, trades, ops)
-    _days, curve, _start = parse_backtest()
-    stats = bt_stats(curve)
-    bt_trades = parse_bt_trades()
-    out = emit(sigs, trades, ops, anchor, cov, curve, stats, bt_trades)
+    out = emit(sigs, trades, ops, anchor, cov)
 
     if "--check" in sys.argv:
         current = OUT.read_text(encoding="utf-8") if OUT.exists() else None
@@ -432,8 +302,7 @@ def main():
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(out, encoding="utf-8")
     print(f"wrote {OUT} — SIG {len(sigs)} · TRD {len(trades)} · OPS {len(ops)} "
-          f"· anchor {'yes' if anchor else 'PRE-LIVE'} · coverage {len(cov)}d "
-          f"· BT {len(curve)}d/{len(bt_trades)} trades")
+          f"· anchor {'yes' if anchor else 'PRE-LIVE'} · coverage {len(cov)}d")
 
 
 if __name__ == "__main__":

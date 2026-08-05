@@ -19,7 +19,6 @@
     --green: #2BD576;   /* reserved: rule satisfied / day accounted for */
     --amber: #FFB020;
     --red: #FF4D5E;
-    --bt: #7A82A8;      /* backtest desaturated accent */
     --mono: "SF Mono", "Menlo", "Consolas", "DejaVu Sans Mono", monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", sans-serif;
   }
@@ -177,34 +176,12 @@
   .tl .ev .what { font-size: 11.5px; color: var(--dim); margin-top: 3px; line-height: 1.5; font-family: var(--sans); }
   .tl .ev .what b { color: var(--txt); font-weight: 600; }
 
-  /* ---------- backtest section ---------- */
-  .bt-break { margin: 44px 0 0; padding: 12px 0 0; border-top: 2px solid var(--line); position: relative; }
-  .bt-banner { display: flex; align-items: center; gap: 14px; margin: 16px 0 14px; padding: 12px 16px;
-               border: 1px dashed #3A415C; border-radius: 8px; background: repeating-linear-gradient(
-                 -45deg, #0D101A 0 14px, #0F1320 14px 28px); }
-  .bt-banner .mark { font-size: 11px; font-weight: 700; letter-spacing: 2.5px; color: var(--bt);
-                     border: 1px solid #3A415C; padding: 4px 11px; border-radius: 4px; white-space: nowrap; }
-  .bt-banner .x { font-family: var(--sans); font-size: 11.5px; color: var(--dim); line-height: 1.55; }
-  .bt-banner .x b { color: var(--txt); }
-  .bt .panel-h .t::before { color: var(--bt); }
-  .bt .kpi::before { background: var(--bt); }
-  .bt .kpi .v { color: #A9B0CE; }
-
-  .stat-tbl td { font-size: 12px; }
-  .stat-tbl td:first-child { color: var(--dim); font-size: 10.5px; }
-
   /* ---------- limitations ---------- */
   .limits { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; }
   .limit { padding: 13px 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); }
   .limit h4 { font-size: 11px; letter-spacing: 0.8px; margin-bottom: 6px; color: var(--amber); font-weight: 700; }
   .limit p { font-family: var(--sans); font-size: 11.5px; color: var(--dim); line-height: 1.6; }
   .limit p b { color: var(--txt); font-weight: 600; }
-
-  #tooltip { position: fixed; pointer-events: none; display: none; z-index: 99; background: #04060B;
-             border: 1px solid var(--line); color: var(--txt); font-size: 11px;
-             padding: 8px 11px; border-radius: 5px; line-height: 1.6; max-width: 320px;
-             box-shadow: 0 10px 28px rgba(0,0,0,.65); }
-  #tooltip .td { color: var(--cyan); }
 
   .fine { font-size: 10.5px; color: var(--faint); line-height: 1.75; margin-top: 22px; padding: 0 4px;
           font-family: var(--sans); }
@@ -220,7 +197,6 @@
 </style>
 </head>
 <body>
-<div id="tooltip"></div>
 <div class="shell">
 
   <div class="topbar">
@@ -275,42 +251,11 @@
       <div class="panel-h" style="--pc: var(--cyan)"><span class="t">Provenance</span></div>
       <div class="panel-b" id="provPanel"></div>
     </div>
-  </div>
 
-  <!-- ==================== BACKTEST (claim, not evidence) ==================== -->
-  <div class="bt-break"></div>
-  <div class="bt">
-    <div class="bt-banner rise" style="animation-delay:.24s">
-      <span class="mark">BACKTEST · NOT LIVE</span>
-      <span class="x">Frozen E2 rule, 2006–2026. Live engine independently verified against it:
-        <b>99.53% agreement</b>, 2,385 sessions (2017–2026).</span>
-    </div>
-
-    <div class="kpis rise" id="btKpis" style="animation-delay:.27s"></div>
-
-    <div class="grid">
-      <div class="panel c12 rise" style="animation-delay:.30s">
-        <div class="panel-h"><span class="t">E2 vs QLD buy &amp; hold — growth of 1</span>
-          <span class="sub" id="btChartSub"></span></div>
-        <div class="panel-b" id="btChart"></div>
-      </div>
-
-      <div class="panel c4 rise" style="animation-delay:.33s">
-        <div class="panel-h"><span class="t">Backtest statistics</span><span class="sub" id="btStatSub"></span></div>
-        <div class="panel-b" id="btStats"></div>
-      </div>
-
-      <div class="panel c8 rise" style="animation-delay:.36s">
-        <div class="panel-h"><span class="t">Backtest trade log — all signal changes</span>
-          <span class="sub" id="btTradesSub"></span></div>
-        <div class="panel-b scrolly" id="btTrades"></div>
-      </div>
-
-      <div class="panel c12 rise" style="animation-delay:.39s">
-        <div class="panel-h" style="--pc: var(--amber)"><span class="t">Limitations</span>
-          <span class="sub">AUDIT.md §4</span></div>
-        <div class="panel-b limits" id="limits"></div>
-      </div>
+    <div class="panel c12 rise" style="animation-delay:.24s">
+      <div class="panel-h" style="--pc: var(--amber)"><span class="t">Limitations</span>
+        <span class="sub">AUDIT.md §4</span></div>
+      <div class="panel-b limits" id="limits"></div>
     </div>
   </div>
 
@@ -545,141 +490,13 @@ function kpi(label, value, sub, color) {
   </div>`;
 })();
 
-/* ================= BACKTEST ================= */
-(function renderBtKpis(){
-  const S = BT_STATS;
-  $("btKpis").innerHTML = [
-    kpi("Growth of 1", S.total_x.toFixed(1) + "×", `QLD buy &amp; hold: ${S.bh_total_x.toFixed(1)}× — same window`, "var(--bt)"),
-    kpi("CAGR", S.cagr.toFixed(1) + "%", `buy &amp; hold ${S.bh_cagr.toFixed(1)}% · ${S.years} years`, "var(--bt)"),
-    kpi("Max drawdown", S.maxdd.toFixed(1) + "%", `buy &amp; hold ${S.bh_maxdd.toFixed(1)}% — the reason this rule exists`, "var(--bt)"),
-    kpi("Sharpe", S.sharpe.toFixed(2), "daily returns, annualized √252", "var(--bt)"),
-    kpi("Signal changes", BT_TRADES.length, `over ${S.years} years — ≈${(BT_TRADES.length/S.years).toFixed(0)}/year`, "var(--bt)"),
-    kpi("Engine agreement", BT_VERIFIED.agreePct + "%", `${BT_VERIFIED.days.toLocaleString()} verified sessions ${BT_VERIFIED.start.slice(0,4)}–${BT_VERIFIED.end.slice(0,4)}`, "var(--bt)"),
-  ].join("");
-})();
-
-(function renderBtChart(){
-  const S = BT_STATS;
-  $("btChartSub").textContent = `log scale · ${S.start} → ${S.end} · shaded band = engine-verified window`;
-  const W = 1160, H = 380, DH = 84, P = {l:52, r:76, t:14, b:22};
-  const n = BT.length;
-  const x = i => P.l + i/(n-1)*(W-P.l-P.r);
-  const vmax = Math.max(BT[n-1][1], BT[n-1][2]) * 1.15;
-  const vmin = Math.min(...BT.map(r => Math.min(r[1], r[2]))) * 0.9;
-  const lmin = Math.log(vmin), lmax = Math.log(vmax);
-  const ly = v => P.t + (1 - (Math.log(v)-lmin)/(lmax-lmin)) * (H-P.t-P.b);
-  function pathOf(col){
-    let d = "", step = Math.max(1, Math.floor(n/1400));
-    for (let i = 0; i < n; i += step) d += (d?"L":"M") + x(i).toFixed(1) + "," + ly(BT[i][col]).toFixed(1);
-    d += "L" + x(n-1).toFixed(1) + "," + ly(BT[n-1][col]).toFixed(1);
-    return d;
-  }
-  /* verified window */
-  const vi0 = BT.findIndex(r => r[0] >= BT_VERIFIED.start);
-  const gLines = [0.2,0.5,1,2,5,10,20,50,100].filter(v => v < vmax && v > vmin);
-  const yearTicks = [];
-  for (let i = 1; i < n; i++) if (BT[i][0].slice(0,4) !== BT[i-1][0].slice(0,4) && +BT[i][0].slice(0,4) % 2 === 0)
-    { if (x(i) > P.l + 28) yearTicks.push({i, y: BT[i][0].slice(0,4)}); }
-  /* episode callouts — the rule's edge is when it steps aside */
-  const idxOf = d => { const i = BT.findIndex(r => r[0] >= d); return i < 0 ? n-1 : i; };
-  const gfc = idxOf("2009-03-09"), bear22 = idxOf("2022-06-16");
-  const callout = (i, col, dx, dy, anchor, txt1, txt2) => {
-    const cx = x(i), cy = ly(BT[i][col]);
-    const ty = cy + dy;
-    return `<line x1="${cx}" y1="${cy + (dy < 0 ? -5 : 5)}" x2="${cx}" y2="${ty + (dy < 0 ? 14 : -12)}" stroke="var(--faint)" stroke-width="0.7"/>
-      <circle cx="${cx}" cy="${cy}" r="3.5" fill="none" stroke="var(--amber)" stroke-width="1.2"/>
-      <text x="${cx + dx}" y="${ty}" text-anchor="${anchor}" font-size="10" font-weight="700" fill="var(--dim)">${txt1}</text>
-      <text x="${cx + dx}" y="${ty + 13}" text-anchor="${anchor}" font-size="9.5" fill="var(--faint)">${txt2}</text>`;
-  };
-  /* drawdown subchart */
-  const ddY = v => 8 + (-v / 0.9) * (DH - 16);
-  let ddPath = `M${x(0)},${ddY(0)}`, step = Math.max(1, Math.floor(n/1400));
-  for (let i = 0; i < n; i += step) ddPath += `L${x(i).toFixed(1)},${ddY(BT[i][3]).toFixed(1)}`;
-  ddPath += `L${x(n-1).toFixed(1)},${ddY(BT[n-1][3]).toFixed(1)}L${x(n-1).toFixed(1)},${ddY(0)}Z`;
-
-  $("btChart").innerHTML = `
-  <svg id="btSvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Backtest equity curve, log scale">
-    <rect x="${x(vi0)}" y="${P.t}" width="${x(n-1)-x(vi0)}" height="${H-P.t-P.b}" fill="#8B7BFF" opacity="0.045"/>
-    <line x1="${x(vi0)}" x2="${x(vi0)}" y1="${P.t}" y2="${H-P.b}" stroke="#3A3260" stroke-dasharray="3 4"/>
-    <text x="${x(vi0)+7}" y="${P.t+13}" font-size="10" font-weight="700" fill="#8B7BFF" opacity="0.75">ENGINE-VERIFIED WINDOW → ${BT_VERIFIED.agreePct}% AGREEMENT</text>
-    ${gLines.map(v=>`<line x1="${P.l}" x2="${W-P.r}" y1="${ly(v)}" y2="${ly(v)}" stroke="var(--line-soft)"/>
-      <text x="${P.l-7}" y="${ly(v)+4}" text-anchor="end" font-size="10" fill="var(--faint)">${v}×</text>`).join("")}
-    ${yearTicks.map(t=>`<text x="${x(t.i)}" y="${H-6}" text-anchor="middle" font-size="10" fill="var(--faint)">${t.y}</text>`).join("")}
-    <path d="${pathOf(2)}" fill="none" stroke="var(--cyan)" stroke-width="1.1" opacity="0.55"/>
-    <path d="${pathOf(1)}" fill="none" stroke="#9BA3C9" stroke-width="1.8"/>
-    ${callout(gfc, 2, 24, -46, "start", "2008–09: buy &amp; hold −83%", "rule's worst drawdown, −37.9%, was here")}
-    ${callout(bear22, 2, 10, 40, "start", "2022 bear: avg alloc 21%", "de-risked by the same 8 lines")}
-    <text x="${x(n-1)+7}" y="${ly(BT[n-1][1])+4}" font-size="11" font-weight="700" fill="#B9C0E0">E2 ${BT_STATS.total_x.toFixed(0)}×</text>
-    <text x="${x(n-1)+7}" y="${ly(BT[n-1][2])+4}" font-size="10.5" fill="var(--cyan)" opacity="0.8">B&amp;H ${BT_STATS.bh_total_x.toFixed(0)}×</text>
-    <rect id="btHit" x="${P.l}" y="${P.t}" width="${W-P.l-P.r}" height="${H-P.t-P.b}" fill="transparent"/>
-    <line id="btCross" x1="0" x2="0" y1="${P.t}" y2="${H-P.b}" stroke="var(--dim)" stroke-width="0.7" opacity="0" pointer-events="none"/>
-  </svg>
-  <svg viewBox="0 0 ${W} ${DH}" role="img" aria-label="Backtest drawdown">
-    <text x="${P.l-7}" y="14" text-anchor="end" font-size="10" fill="var(--faint)">DD</text>
-    <line x1="${P.l}" x2="${W-P.r}" y1="${ddY(0)}" y2="${ddY(0)}" stroke="var(--line-soft)"/>
-    <path d="${ddPath}" fill="var(--red)" opacity="0.28" stroke="var(--red)" stroke-width="0.7"/>
-    <text x="${W-P.r}" y="${ddY(-0.379)-4}" text-anchor="end" font-size="9.5" fill="var(--red)">max ${BT_STATS.maxdd}%</text>
-  </svg>
-  <div class="legend">
-    <span><i style="background:#9BA3C9"></i>E2 rule (frozen), growth of 1</span>
-    <span><i style="background:var(--cyan);opacity:.6"></i>QLD buy &amp; hold — ends at ${BT_STATS.bh_total_x}× with a ${BT_STATS.bh_maxdd}% drawdown</span>
-  </div>`;
-
-  /* crosshair tooltip */
-  const svg = $("btSvg"), tip = $("tooltip"), cross = $("btCross");
-  svg.addEventListener("mousemove", e => {
-    const r = svg.getBoundingClientRect();
-    const fx = (e.clientX - r.left) / r.width * W;
-    let i = Math.round((fx - P.l) / (W-P.l-P.r) * (n-1));
-    i = Math.max(0, Math.min(n-1, i));
-    const row = BT[i];
-    cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("opacity", "0.5");
-    tip.style.display = "block";
-    tip.style.left = Math.min(window.innerWidth - 340, e.clientX + 14) + "px";
-    tip.style.top = (e.clientY + 14) + "px";
-    tip.innerHTML = `<span class="td">${row[0]}</span><br>E2: <b>${row[1].toFixed(2)}×</b> · B&amp;H: ${row[2].toFixed(2)}×<br>
-      drawdown ${(row[3]*100).toFixed(1)}% · alloc ${row[4]==null?"—":(row[4]*100)+"%"}`;
-  });
-  svg.addEventListener("mouseleave", () => { tip.style.display = "none"; cross.setAttribute("opacity", "0"); });
-})();
-
-(function renderBtStats(){
-  const S = BT_STATS;
-  $("btStatSub").textContent = `${S.start} → ${S.end}`;
-  const row = (k, a, b) => `<tr><td>${k}</td><td class="r"><b>${a}</b></td><td class="r dim">${b}</td></tr>`;
-  $("btStats").innerHTML = `<table class="stat-tbl">
-    <thead><tr><th></th><th class="r">E2 rule</th><th class="r">QLD B&amp;H</th></tr></thead><tbody>
-    ${row("Growth of 1", S.total_x.toFixed(2) + "×", S.bh_total_x.toFixed(2) + "×")}
-    ${row("CAGR", S.cagr.toFixed(2) + "%", S.bh_cagr.toFixed(2) + "%")}
-    ${row("Max drawdown", S.maxdd.toFixed(1) + "%", S.bh_maxdd.toFixed(1) + "%")}
-    ${row("Sharpe (√252)", S.sharpe.toFixed(2), "—")}
-    ${row("Years", S.years, S.years)}
-    ${row("Signal changes", BT_TRADES.length, "0")}
-    </tbody></table>`;
-})();
-
-(function renderBtTrades(){
-  $("btTradesSub").textContent = `${BT_TRADES.length} allocation changes · exec next session after signal`;
-  const rows = [...BT_TRADES].reverse().map(t => {
-    const dir = t.nw > t.prev ? "up" : "dn";
-    const arrow = t.nw > t.prev ? "▲" : "▼";
-    return `<tr><td class="faint">#${t.n}</td><td>${t.sig}</td><td>${t.exec}</td>
-      <td class="r">${t.px.toFixed(2)}</td>
-      <td class="r"><span class="${dir}">${arrow}</span> ${t.prev*100}% → <b>${t.nw*100}%</b></td>
-      <td class="faint" style="font-family:var(--sans)">${esc(t.note || "")}</td></tr>`;
-  }).join("");
-  $("btTrades").innerHTML = `<table><thead><tr><th>#</th><th>Signal</th><th>Exec</th>
-    <th class="r">Px</th><th class="r">Allocation</th><th>Note</th></tr></thead><tbody>${rows}</tbody></table>`;
-})();
-
 /* ---------- limitations ---------- */
 (function renderLimits(){
   const L = [
     "Paper fills — Alpaca simulation, not market reality",
     "Commit timestamps are self-asserted; Alpaca's order record is the independent witness",
     "Bars are SHA-256 hashed, not archived — a vendor restatement is flagged, not hidden",
-    "Pre-2017 backtest unverifiable on this feed (Alpaca QLD history starts 2016)",
-    "The backtest is a claim; the forward test above is the evidence",
+    "Forward test only — every number on this page is a live logged run",
     "Equity is a 12:00 ET mark, not the official close",
   ];
   $("limits").innerHTML = `<ul style="list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:6px 26px">` +
