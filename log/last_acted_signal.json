@@ -1,6 +1,5 @@
 {
-  "signal_alloc": null,
-  "signal_date": null,
-  "updated_utc": "2026-08-07T14:30:32+00:00",
-  "operator_reset": "2026-08-07 operator decision: cleared last_acted_alloc (was 1.0, written on submission) because MOC order 45849713-450d-49ca-a585-03ef4b2cf623 (buy 1081 QLD, 2026-08-05) expired with only 109 filled; account ~9.9% invested vs model 100%. Null lets the next run trade to target under exec spec rule 3. See ops_log 2026-08-07 manual entry and QLD-model wayfinder map."
+  "signal_alloc": 1.0,
+  "signal_date": "2026-08-06",
+  "updated_utc": "2026-08-07T14:34:39+00:00"
 }
