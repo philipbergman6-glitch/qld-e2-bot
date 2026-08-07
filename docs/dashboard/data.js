@@ -1,14 +1,18 @@
-// ===== E2 dashboard data — derived from log/*.jsonl, latest log 2026-08-05 =====
+// ===== E2 dashboard data — derived from log/*.jsonl, latest log 2026-08-07 =====
 // Regenerate: python3 scripts/build_dashboard_data.py  (--check verifies byte-identity). NEVER hand-edit.
-const AS_OF = "2026-08-05";
+const AS_OF = "2026-08-07";
 const SIG = [
 {d:"2026-08-03",run:"2026-08-04",px:86.62,sma200:76.7374,sma20:87.023,vol:0.482231,hi:0.640699,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:null,src:null,bars:2660},
 {d:"2026-08-03",run:"2026-08-04",px:86.62,sma200:76.7374,sma20:87.023,vol:0.482231,hi:0.640699,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"40716df9d3ba5a333eee03d7a7491bb747e93812b34e9b57083feec1a165a410",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-08-03T23%3A59%3A59Z&limit=10000&sort=asc",bars:2660},
 {d:"2026-08-04",run:"2026-08-05",px:92.46,sma200:76.8566,sma20:87.1615,vol:0.525578,hi:0.640632,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"bde2f0ecc2e178cef04e49a08725aeda9ab3f10d0efab928de38e126e7082ad2",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-08-04T23%3A59%3A59Z&limit=10000&sort=asc",bars:2661},
+{d:"2026-08-04",run:"2026-08-05",px:92.46,sma200:76.8566,sma20:87.1615,vol:0.525578,hi:0.640632,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"bde2f0ecc2e178cef04e49a08725aeda9ab3f10d0efab928de38e126e7082ad2",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-08-04T23%3A59%3A59Z&limit=10000&sort=asc",bars:2661},
+{d:"2026-08-05",run:"2026-08-06",px:90.8,sma200:76.9699,sma20:87.1945,vol:0.530155,hi:0.640607,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"b227ed7a87784419e708b8fef6a0d06c6af8da6956b9a4379b131e50c4684a20",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-08-05T23%3A59%3A59Z&limit=10000&sort=asc",bars:2662},
+{d:"2026-08-06",run:"2026-08-07",px:90.13,sma200:77.0755,sma20:87.044,vol:0.516678,hi:0.640581,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"1a76ad8dcb72ebcefdf10ba9c2ed791abcf4b218e335f240f49e4d646fdd02eb",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-08-06T23%3A59%3A59Z&limit=10000&sort=asc",bars:2663},
 ];
 const TRD = [
 {run:"2026-08-04T15:43:31+00:00",runEt:"2026-08-04",sig:"2026-08-03",alloc:1,action:"HALTED by HALT file — no order",orderId:null,dry:false,equity:null,refPx:null,curQty:null,tgtQty:null,lastActed:null,haltReason:"halted 2026-08-04: pre-go-live — routine plumbing test only, no orders until e2bot-08 (account reset to $100k pending)"},
 {run:"2026-08-05T05:53:29+00:00",runEt:"2026-08-05",sig:"2026-08-04",alloc:1,action:"HALTED by HALT file — no order",orderId:null,dry:false,equity:null,refPx:null,curQty:null,tgtQty:null,lastActed:null,haltReason:"halted 2026-08-04: pre-go-live — routine plumbing test only, no orders until e2bot-08 (account reset to $100k pending)"},
+{run:"2026-08-05T16:47:41+00:00",runEt:"2026-08-05",sig:"2026-08-04",alloc:1,action:"submitted MOC buy 1081 QLD",orderId:"45849713-450d-49ca-a585-03ef4b2cf623",dry:false,equity:100000,refPx:92.46,curQty:0,tgtQty:1081,lastActed:null,haltReason:null},
 ];
 const OPS = [
 {at:"2026-08-04T12:17:23+00:00",d:"2026-08-04",ev:"note",note:"e2bot-07: audit convention (AUDIT.md) + runbook adopted; ops log initialized"},
@@ -16,9 +20,18 @@ const OPS = [
 {at:"2026-08-04T12:54:14+00:00",d:"2026-08-04",ev:"manual",note:"Alpaca paper account switched to PA3KZ09KPX46 (created 2026-08-04, $100,000, 0 orders, 0 positions); old PA3105UW4264 retained with BOT2.0 history intact (snapshot: QLD-model assets/bot20-alpaca-order-history-2026-08-02.json). New account is the E2 forward-test witness."},
 {at:"2026-08-04T14:15:09+00:00",d:"2026-08-04",ev:"failure",note:"2026-08-04 engine/signal_engine.py: stale data guard tripped - last bar 2026-08-04 (today, session still open) vs last completed session 2026-08-03; no signal, no order"},
 {at:"2026-08-05T06:12:15+00:00",d:"2026-08-05",ev:"resume",note:"go-live: HALT lifted for e2bot-08 after --dry-run proved the execution path (equity 100000, 0 QLD, would submit MOC buy 1081 QLD @ ref 92.46, signal 2026-08-04 alloc=1.0); first real order expected on the 12:00 ET run 2026-08-05"},
+{at:"2026-08-05T09:38:20+00:00",d:"2026-08-05",ev:"failure",note:"2026-08-05 engine/execute.py: market closed at run time (fired 05:37 ET, open is 09:30 ET; designed fire 12:00 ET) - signal computed alloc=1.0, no order placed"},
+{at:"2026-08-05T16:48:10+00:00",d:"2026-08-05",ev:"manual",note:"2026-08-05 operator-authorized re-run at 12:47 ET after the 05:30 ET fire failed on the market-closed guard; MOC buy 1081 QLD placed (45849713-450d-49ca-a585-03ef4b2cf623); root cause: E2BOT-daily cron '30 9 * * *' evaluated in UTC = 05:30 ET, corrected to '0 16 * * 1-5' = 12:00 ET"},
+{at:"2026-08-05T16:48:44+00:00",d:"2026-08-05",ev:"note",note:"2026-08-05 CORRECTION to the preceding manual entry: the cron was NOT corrected - update_trigger was rejected (E2BOT-daily trig_01QLg4RE6iuGU6dyWrqagCXW was created via http_api; agents may only update routines they created). Cron REMAINS '30 9 * * *' UTC = 05:30 ET and WILL fail identically on 2026-08-06. Operator must change it by hand to '0 16 * * 1-5' (12:00 ET during EDT)."},
+{at:"2026-08-06T09:38:45+00:00",d:"2026-08-06",ev:"failure",note:"2026-08-06 engine/execute.py: market closed at run time (fired 05:37 ET, open is 09:30 ET; designed fire 12:00 ET) - signal computed alloc=1.0, no order placed; SECOND consecutive day, cron '30 9 * * *' UTC still uncorrected"},
+{at:"2026-08-06T09:38:51+00:00",d:"2026-08-06",ev:"note",note:"2026-08-06 POSITION DISCREPANCY (signal_date 2026-08-04): order 45849713-450d-49ca-a585-03ef4b2cf623 (MOC buy 1081 QLD) EXPIRED at 2026-08-05T20:01:36Z with filled_qty=109 of 1081 @ 90.79. Account holds 109 sh ($9,817 of $99,922 equity = ~9.8%) but log/last_acted_signal.json records alloc=1.0 as acted - execute.py writes state on SUBMISSION not FILL, and exec spec rule 3 holds unless the signal CHANGES, so no top-up will ever be placed and the bot stays ~10% long while the model reads 100%. NOT self-healing. Bot took no corrective action (no order, no state edit, engine untouched); operator decision required per RUNBOOK 4/5/7."},
+{at:"2026-08-07T09:38:09+00:00",d:"2026-08-07",ev:"failure",note:"2026-08-07 engine/execute.py: market closed at run time (fired 05:37 ET, open is 09:30 ET; designed fire 12:00 ET) - signal computed alloc=1.0, no order placed; THIRD consecutive day, cron '30 9 * * *' UTC still uncorrected"},
+{at:"2026-08-07T09:38:09+00:00",d:"2026-08-07",ev:"note",note:"2026-08-07 position discrepancy from 2026-08-05 STILL UNRESOLVED: account holds 109 of 1081 QLD ($9,925.54 of $100,029.42 equity = ~9.9%) while log/last_acted_signal.json records alloc=1.0 acted; exec spec rule 3 suppresses any top-up until the signal CHANGES. Bot took no corrective action (no order, no state edit, engine untouched). Operator decision required per RUNBOOK 4/5/7."},
 ];
-const ANCHOR = null; // no live equity record yet — pre-first-run
+const ANCHOR = {d:"2026-08-05",equity:100000,refPx:92.46};
 const COVERAGE = [
 {d:"2026-08-04",st:"log"},
 {d:"2026-08-05",st:"log"},
+{d:"2026-08-06",st:"log"},
+{d:"2026-08-07",st:"log"},
 ];
