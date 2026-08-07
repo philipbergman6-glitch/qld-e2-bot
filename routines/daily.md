@@ -66,7 +66,11 @@ Notes: <one line, or 'nominal'>"
 history; if unknown, write "n/a".)
 
 STEP 5 — COMMIT AND PUSH TO main (mandatory whenever log/ changed):
-git add log/
+python3 scripts/build_dashboard_data.py
+(regenerates docs/dashboard/data.js from log/*.jsonl; if it exits non-zero,
+follow the FAILURE RULE but still commit log/ — the audit trail outranks
+the dashboard)
+git add log/ docs/dashboard/data.js
 git commit -m "E2 daily $DATE: alloc=${ALLOC}% <order id | no trade | HALTED>"
 git push origin HEAD:main
 On push failure: pull --rebase origin main and retry once; if it still fails,
