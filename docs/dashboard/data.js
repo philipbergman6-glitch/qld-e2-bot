@@ -1,6 +1,6 @@
-// ===== E2 dashboard data — derived from log/*.jsonl, latest log 2026-08-07 =====
+// ===== E2 dashboard data — derived from log/*.jsonl, latest log 2026-08-08 =====
 // Regenerate: python3 scripts/build_dashboard_data.py  (--check verifies byte-identity). NEVER hand-edit.
-const AS_OF = "2026-08-07";
+const AS_OF = "2026-08-08";
 const SIG = [
 {d:"2026-08-03",run:"2026-08-04",px:86.62,sma200:76.7374,sma20:87.023,vol:0.482231,hi:0.640699,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:null,src:null,bars:2660},
 {d:"2026-08-03",run:"2026-08-04",px:86.62,sma200:76.7374,sma20:87.023,vol:0.482231,hi:0.640699,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"40716df9d3ba5a333eee03d7a7491bb747e93812b34e9b57083feec1a165a410",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-08-03T23%3A59%3A59Z&limit=10000&sort=asc",bars:2660},
@@ -38,6 +38,8 @@ const OPS = [
 {at:"2026-08-07T14:30:48+00:00",d:"2026-08-07",ev:"manual",note:"2026-08-07 OPERATOR RESET of log/last_acted_signal.json: signal_alloc 1.0 -> null, authorized by operator (Philip) in Claude Code session, to resolve the 2026-08-05 partial fill (order 45849713 expired 109/1081 filled, ~9.9% invested vs model 100%). Exec spec rule 3 will now see a signal change and the next execute.py run trades to target. No order placed by hand; engine untouched. Decision to be recorded on QLD-model wayfinder map."},
 {at:"2026-08-07T14:34:47+00:00",d:"2026-08-07",ev:"manual",note:"2026-08-07 operator-directed re-run of daily sequence after the state reset: signal_engine (alloc=1.0, sig 2026-08-06) then execute.py submitted MOC buy 984 QLD (order 2987a5fc-082a-4128-84c6-b446bb84eef7, target_qty 1093, cur 109) - the top-up comes from the engine under rule 3, no hand order; first and only MOC order today (earlier 10:14 ET run was hold pre-reset)"},
 {at:"2026-08-07T16:12:12+00:00",d:"2026-08-07",ev:"note",note:"2026-08-07 hold; pending MOC buy 984 QLD (2987a5fc) unfilled, notional 984x92.12=$90646 vs cash $90103.88 and buying_power 0 — same zero-cash-buffer setup that clipped 08-05 order to 109/1081; partial fill risk at today's close"},
+{at:"2026-08-08T16:13:03+00:00",d:"2026-08-08",ev:"market-closed",note:"2026-08-08 market closed (SATURDAY, not a holiday) - no signal run, no order; cron fired on a weekend, so the '30 9 * * *' UTC schedule still appears uncorrected (same misfire class as the 08-07 05:37 ET firing)"},
+{at:"2026-08-08T16:13:03+00:00",d:"2026-08-08",ev:"note",note:"2026-08-08 read-only account check: 2026-08-07 MOC buy 984 QLD (2987a5fc) PARTIALLY FILLED 791/984 @ 92.19 then expired - SECOND consecutive partial fill from the zero-cash-buffer sizing. Position now 900 QLD, market_value 82989 of equity 100170.58 = 82.85% invested vs model 100% (~186 sh / $17182 short). last_acted_signal is back to alloc=1.0 (2026-08-06), so exec spec rule 3 will again return 'hold (drift never rebalanced)' on Monday unless the signal changes - the same trap the 08-07 operator reset was needed to clear. No open orders. Bot took NO corrective action: no order, no state edit, engine untouched. Operator decision required per RUNBOOK 4/5/7."},
 ];
 const ANCHOR = {d:"2026-08-05",equity:100000,refPx:92.46};
 const COVERAGE = [
