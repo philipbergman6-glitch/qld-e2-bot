@@ -52,6 +52,27 @@ Liveness verdict:
 | Nothing at all | routine never ran or died early; §4, start at the cloud UI |
 | Alpaca order with no trade-log line | **stop and investigate** — §5 halt first |
 
+## 2b. Execution-timing check (weekly, with the rollup)
+
+The backtest convention is **signal at close N → MOC order placed N+1 →
+position effective from N+2**. This is part of the spec, not a detail:
+measured on the E10 overlay work (2026-08-09, `QLD-model`
+`wayfinder/assets/e10-tv-stepb-reconciliation.md`), executing one day later
+silently turns a −34% worst-case into −47%. The same shift(3) haircut was
+measured on E9 (Martin 1.331 → 0.983). A late bot *looks* healthy — nothing
+errors — so this must be checked against fills, not logs alone:
+
+```bash
+# For the most recent trade: signal_log date must be exactly one trading
+# day BEFORE the Alpaca fill date (MOC fills at the N+1 close).
+tail -1 log/signal_log.jsonl | python3 -m json.tool | grep -E 'date|alloc'
+bash scripts/alpaca.sh orders all   # compare filled_at vs signal date
+```
+
+Signal date == fill date, or fill two+ trading days after signal → the bot
+is running a different (worse) strategy than the backtest. Halt (§5) and
+reconcile before the next run.
+
 ## 3. Reading the logs
 
 ```bash
