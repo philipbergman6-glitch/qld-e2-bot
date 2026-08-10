@@ -4,8 +4,10 @@
 Implements the execution spec (e2bot-03, 2026-08-02) verbatim:
   1. Market-on-close order placed on day N+1, before the ~15:50 ET MOC cutoff.
   2. Whole shares, round down; target dollars = signal_alloc * account equity.
-  3. Trade ONLY when the signal differs from the last acted-on signal; never
-     rebalance for drift.
+  3. Trade when the signal differs from the last acted-on signal, OR when the
+     realized allocation (from shares actually HELD) has drifted more than
+     DRIFT_BAND from the signal. Amended from the original "never rebalance for
+     drift" by wayfinder decision e2bot-11 (2026-08-10).
   4. Missed days self-heal: today's run trades toward today's fresh signal;
      no back-fill.
 
@@ -40,6 +42,25 @@ HALT_PATH = os.path.join(ROOT, "HALT")  # kill switch: present => never order
 SYM = "QLD"
 MOC_CUTOFF = dt.time(15, 45)  # ET; 5 min safety before Alpaca's 15:50 cutoff
 ET = ZoneInfo("America/New_York")
+
+# Rebalance when the REALIZED allocation deviates from the signal by more than
+# this fraction of equity, even if the signal itself has not changed (e2bot-11).
+#
+# Why this exists: state records the allocation *submitted*, not the one
+# *filled*. Both live MOC orders to date expired partially filled (109/1081 on
+# 2026-08-05, 791/984 on 2026-08-07), so state read "acted on 100%" while the
+# account held 82.8%, and the signal-change test — the only path to an order —
+# could never fire. The shortfall was structurally invisible.
+#
+# Why 0.01: simulated over the 2006-2026 reference series (which is a
+# constant-fraction strategy, New_ret = Effective_alloc * QLD_ret, i.e. an exact
+# daily rebalance — so a drift gate moves live CLOSER to the backtest, not away
+# from it). With clean fills the band is nearly free (-0.00% CAGR vs backtest,
+# ~13 orders/yr). With 20% of each buy failing to fill — the observed base rate
+# — no gate costs -4.64% CAGR while 0.01 costs -0.71% at ~20 orders/yr. Tighter
+# bands gain little (0.005: -0.63%) and 0.01 stays 10x above floor()-rounding
+# noise (1 share ~ 0.09% of equity at current prices).
+DRIFT_BAND = 0.01
 
 
 def fatal(msg):
@@ -150,7 +171,7 @@ def main():
     cur_qty = int(float(pos["qty"])) if pos else 0
     px = float(pos["current_price"]) if pos else float(sig["px"])
 
-    # Trade only on signal change vs the last acted-on signal.
+    # Trade on signal change vs the last acted-on signal, or on realized drift.
     last_acted = None
     if os.path.exists(STATE_PATH):
         with open(STATE_PATH) as f:
@@ -158,6 +179,11 @@ def main():
 
     target_qty = math.floor(alloc * equity / px)
     delta = target_qty - cur_qty
+
+    # Realized allocation, derived from shares actually HELD — never from what
+    # was ordered. This is what makes a partial fill visible to the gate below.
+    cur_alloc = cur_qty * px / equity
+    drift = abs(cur_alloc - alloc)
 
     decision = {
         "run_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
@@ -168,24 +194,31 @@ def main():
         "ref_px": px,
         "current_qty": cur_qty,
         "target_qty": target_qty,
+        "current_alloc": round(cur_alloc, 6),
+        "drift": round(drift, 6),
+        "drift_band": DRIFT_BAND,
         "action": None,
         "order_id": None,
         "dry_run": dry,
     }
 
-    if last_acted == alloc:
-        decision["action"] = "hold (signal unchanged; drift never rebalanced)"
+    if last_acted == alloc and drift <= DRIFT_BAND:
+        decision["action"] = (
+            f"hold (signal unchanged; drift {drift:.2%} within band {DRIFT_BAND:.0%})"
+        )
     elif delta == 0:
         decision["action"] = "hold (already at target)"
     else:
+        why = "signal change" if last_acted != alloc else f"drift {drift:.2%}"
+        decision["order_reason"] = why
         side = "buy" if delta > 0 else "sell"
         order_body = {"symbol": SYM, "qty": str(abs(delta)), "side": side,
                       "type": "market", "time_in_force": "cls"}
         if dry:
-            decision["action"] = f"would submit MOC {side} {abs(delta)} {SYM}"
+            decision["action"] = f"would submit MOC {side} {abs(delta)} {SYM} ({why})"
         else:
             order = api("POST", "/orders", order_body)
-            decision["action"] = f"submitted MOC {side} {abs(delta)} {SYM}"
+            decision["action"] = f"submitted MOC {side} {abs(delta)} {SYM} ({why})"
             decision["order_id"] = order["id"]
 
     if not dry:
