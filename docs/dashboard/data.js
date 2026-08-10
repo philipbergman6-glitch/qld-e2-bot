@@ -1,6 +1,6 @@
-// ===== E2 dashboard data — derived from log/*.jsonl, latest log 2026-08-07 =====
+// ===== E2 dashboard data — derived from log/*.jsonl, latest log 2026-08-10 =====
 // Regenerate: python3 scripts/build_dashboard_data.py  (--check verifies byte-identity). NEVER hand-edit.
-const AS_OF = "2026-08-07";
+const AS_OF = "2026-08-10";
 const SIG = [
 {d:"2026-08-03",run:"2026-08-04",px:86.62,sma200:76.7374,sma20:87.023,vol:0.482231,hi:0.640699,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:null,src:null,bars:2660},
 {d:"2026-08-03",run:"2026-08-04",px:86.62,sma200:76.7374,sma20:87.023,vol:0.482231,hi:0.640699,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"40716df9d3ba5a333eee03d7a7491bb747e93812b34e9b57083feec1a165a410",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-08-03T23%3A59%3A59Z&limit=10000&sort=asc",bars:2660},
@@ -10,6 +10,7 @@ const SIG = [
 {d:"2026-08-06",run:"2026-08-07",px:90.13,sma200:77.0755,sma20:87.044,vol:0.516678,hi:0.640581,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"1a76ad8dcb72ebcefdf10ba9c2ed791abcf4b218e335f240f49e4d646fdd02eb",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-08-06T23%3A59%3A59Z&limit=10000&sort=asc",bars:2663},
 {d:"2026-08-06",run:"2026-08-07",px:90.13,sma200:77.0755,sma20:87.044,vol:0.516678,hi:0.640581,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"1a76ad8dcb72ebcefdf10ba9c2ed791abcf4b218e335f240f49e4d646fdd02eb",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-08-06T23%3A59%3A59Z&limit=10000&sort=asc",bars:2663},
 {d:"2026-08-06",run:"2026-08-07",px:90.13,sma200:77.0755,sma20:87.044,vol:0.516678,hi:0.640581,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"1a76ad8dcb72ebcefdf10ba9c2ed791abcf4b218e335f240f49e4d646fdd02eb",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-08-06T23%3A59%3A59Z&limit=10000&sort=asc",bars:2663},
+{d:"2026-08-07",run:"2026-08-10",px:92.21,sma200:77.183,sma20:86.9695,vol:0.523322,hi:0.640555,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"21c9635e8ff6be5191120ec3870bffa08e15d07c4cfe254e13217869738470f2",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-08-07T23%3A59%3A59Z&limit=10000&sort=asc",bars:2664},
 ];
 const TRD = [
 {run:"2026-08-04T15:43:31+00:00",runEt:"2026-08-04",sig:"2026-08-03",alloc:1,action:"HALTED by HALT file — no order",orderId:null,dry:false,equity:null,refPx:null,curQty:null,tgtQty:null,lastActed:null,haltReason:"halted 2026-08-04: pre-go-live — routine plumbing test only, no orders until e2bot-08 (account reset to $100k pending)"},
@@ -17,6 +18,7 @@ const TRD = [
 {run:"2026-08-05T16:47:41+00:00",runEt:"2026-08-05",sig:"2026-08-04",alloc:1,action:"submitted MOC buy 1081 QLD",orderId:"45849713-450d-49ca-a585-03ef4b2cf623",dry:false,equity:100000,refPx:92.46,curQty:0,tgtQty:1081,lastActed:null,haltReason:null},
 {run:"2026-08-07T14:14:42+00:00",runEt:"2026-08-07",sig:"2026-08-06",alloc:1,action:"hold (signal unchanged; drift never rebalanced)",orderId:null,dry:false,equity:99991.27,refPx:90.71,curQty:109,tgtQty:1102,lastActed:1,haltReason:null},
 {run:"2026-08-07T14:34:39+00:00",runEt:"2026-08-07",sig:"2026-08-06",alloc:1,action:"submitted MOC buy 984 QLD",orderId:"2987a5fc-082a-4128-84c6-b446bb84eef7",dry:false,equity:100077.38,refPx:91.5,curQty:109,tgtQty:1093,lastActed:null,haltReason:null},
+{run:"2026-08-10T17:37:24+00:00",runEt:"2026-08-10",sig:"2026-08-07",alloc:1,action:"submitted MOC buy 187 QLD",orderId:"6445c274-c0df-4b5a-8ff4-0ea92b81b1de",dry:false,equity:99842.08,refPx:91.845,curQty:900,tgtQty:1087,lastActed:null,haltReason:null},
 ];
 const OPS = [
 {at:"2026-08-04T12:17:23+00:00",d:"2026-08-04",ev:"note",note:"e2bot-07: audit convention (AUDIT.md) + runbook adopted; ops log initialized"},
@@ -35,6 +37,7 @@ const OPS = [
 {at:"2026-08-07T14:15:11+00:00",d:"2026-08-07",ev:"note",note:"2026-08-07 position discrepancy from 2026-08-05 STILL UNRESOLVED on a successful run: account holds 109 QLD ($9,891.75 of $99,995.63 equity = ~9.9%) vs target_qty 1102; execute.py returned 'hold (signal unchanged; drift never rebalanced)' - confirms exec spec rule 3 suppresses any top-up while last_acted_alloc=1.0. Bot took no corrective action (no order, no state edit, engine untouched). Operator decision required per RUNBOOK 4/5/7."},
 {at:"2026-08-07T14:30:48+00:00",d:"2026-08-07",ev:"manual",note:"2026-08-07 OPERATOR RESET of log/last_acted_signal.json: signal_alloc 1.0 -> null, authorized by operator (Philip) in Claude Code session, to resolve the 2026-08-05 partial fill (order 45849713 expired 109/1081 filled, ~9.9% invested vs model 100%). Exec spec rule 3 will now see a signal change and the next execute.py run trades to target. No order placed by hand; engine untouched. Decision to be recorded on QLD-model wayfinder map."},
 {at:"2026-08-07T14:34:47+00:00",d:"2026-08-07",ev:"manual",note:"2026-08-07 operator-directed re-run of daily sequence after the state reset: signal_engine (alloc=1.0, sig 2026-08-06) then execute.py submitted MOC buy 984 QLD (order 2987a5fc-082a-4128-84c6-b446bb84eef7, target_qty 1093, cur 109) - the top-up comes from the engine under rule 3, no hand order; first and only MOC order today (earlier 10:14 ET run was hold pre-reset)"},
+{at:"2026-08-10T17:36:59+00:00",d:"2026-08-10",ev:"manual",note:"2026-08-10 OPERATOR RESET #2 of log/last_acted_signal.json (1.0 -> null), authorized by operator (Philip) in Claude Code session: e2bot-11 recurred - top-up MOC order 2987a5fc-082a-4128-84c6-b446bb84eef7 (buy 984 QLD, 2026-08-07) EXPIRED with only 791 of 984 filled @ 92.19, leaving 109+791=900 sh ($82,737 of $99,918.58 equity = 82.8%) while signal reads alloc=1.0 and execute.py returns 'hold'. Null lets the next run trade to target under exec spec rule 3. No hand order; engine untouched."},
 ];
 const ANCHOR = {d:"2026-08-05",equity:100000,refPx:92.46};
 const COVERAGE = [
@@ -42,4 +45,5 @@ const COVERAGE = [
 {d:"2026-08-05",st:"log"},
 {d:"2026-08-06",st:"log"},
 {d:"2026-08-07",st:"log"},
+{d:"2026-08-10",st:"log"},
 ];
