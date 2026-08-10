@@ -4,8 +4,12 @@
 Implements the execution spec (e2bot-03, 2026-08-02) verbatim:
   1. Market-on-close order placed on day N+1, before the ~15:50 ET MOC cutoff.
   2. Whole shares, round down; target dollars = signal_alloc * account equity.
-  3. Trade ONLY when the signal differs from the last acted-on signal; never
-     rebalance for drift.
+  3. Trade when the signal differs from the last acted-on signal, OR when the
+     realized allocation has drifted more than DRIFT_BAND from the signal.
+     (Amended from the original "never rebalance for drift": state records the
+     allocation *submitted*, not the one *filled*, so a partial MOC fill left
+     the account permanently off-target with no mechanism to notice. Pending
+     wayfinder decision — see the branch commit message.)
   4. Missed days self-heal: today's run trades toward today's fresh signal;
      no back-fill.
 
@@ -40,6 +44,14 @@ HALT_PATH = os.path.join(ROOT, "HALT")  # kill switch: present => never order
 SYM = "QLD"
 MOC_CUTOFF = dt.time(15, 45)  # ET; 5 min safety before Alpaca's 15:50 cutoff
 ET = ZoneInfo("America/New_York")
+
+# Rebalance when realized allocation deviates from the signal by more than this
+# fraction of equity, even if the signal itself has not changed. Without it a
+# partially-filled MOC order strands the account off-target forever: state
+# records the *submitted* allocation, not the *filled* one, so the shortfall is
+# invisible to the signal-change test. 0.02 sits well above floor()-rounding
+# noise (<=1 share, ~0.09%) and above ordinary intraday drift at 50% alloc.
+DRIFT_BAND = 0.02
 
 
 def fatal(msg):
@@ -159,6 +171,10 @@ def main():
     target_qty = math.floor(alloc * equity / px)
     delta = target_qty - cur_qty
 
+    # Realized allocation, from shares actually held — not from what was ordered.
+    cur_alloc = cur_qty * px / equity
+    drift = abs(cur_alloc - alloc)
+
     decision = {
         "run_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "signal_date": sig["signal_date"],
@@ -168,24 +184,31 @@ def main():
         "ref_px": px,
         "current_qty": cur_qty,
         "target_qty": target_qty,
+        "current_alloc": round(cur_alloc, 6),
+        "drift": round(drift, 6),
+        "drift_band": DRIFT_BAND,
         "action": None,
         "order_id": None,
         "dry_run": dry,
     }
 
-    if last_acted == alloc:
-        decision["action"] = "hold (signal unchanged; drift never rebalanced)"
+    if last_acted == alloc and drift <= DRIFT_BAND:
+        decision["action"] = (
+            f"hold (signal unchanged; drift {drift:.2%} within band {DRIFT_BAND:.0%})"
+        )
     elif delta == 0:
         decision["action"] = "hold (already at target)"
     else:
+        why = "signal change" if last_acted != alloc else f"drift {drift:.2%}"
+        decision["order_reason"] = why
         side = "buy" if delta > 0 else "sell"
         order_body = {"symbol": SYM, "qty": str(abs(delta)), "side": side,
                       "type": "market", "time_in_force": "cls"}
         if dry:
-            decision["action"] = f"would submit MOC {side} {abs(delta)} {SYM}"
+            decision["action"] = f"would submit MOC {side} {abs(delta)} {SYM} ({why})"
         else:
             order = api("POST", "/orders", order_body)
-            decision["action"] = f"submitted MOC {side} {abs(delta)} {SYM}"
+            decision["action"] = f"submitted MOC {side} {abs(delta)} {SYM} ({why})"
             decision["order_id"] = order["id"]
 
     if not dry:
