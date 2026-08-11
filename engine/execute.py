@@ -166,6 +166,10 @@ def main():
     equity = float(account["equity"])
     if equity <= 0:
         fatal(f"non-positive equity {equity}")
+    # QLD is non-marginable (margin_requirement_long 100), so cash — not equity,
+    # not buying_power — is what a buy is actually paid from. Recorded only; the
+    # sizing below still uses equity (e2bot-14, decided 2026-08-11).
+    cash = float(account["cash"])
 
     pos = api("GET", f"/positions/{SYM}")
     cur_qty = int(float(pos["qty"])) if pos else 0
@@ -180,6 +184,12 @@ def main():
     target_qty = math.floor(alloc * equity / px)
     delta = target_qty - cur_qty
 
+    # How many shares of headroom the cash leaves beyond the order, priced at the
+    # intraday reference. Negative means the order cannot be paid for in full at
+    # this price and can only fill short; near zero means a rise between now and
+    # the close does the same. Diagnostic only — nothing branches on it yet.
+    buffer_shares = round(cash / px - delta, 2) if delta > 0 else None
+
     # Realized allocation, derived from shares actually HELD — never from what
     # was ordered. This is what makes a partial fill visible to the gate below.
     cur_alloc = cur_qty * px / equity
@@ -191,9 +201,11 @@ def main():
         "signal_alloc": alloc,
         "last_acted_alloc": last_acted,
         "equity": equity,
+        "cash": cash,
         "ref_px": px,
         "current_qty": cur_qty,
         "target_qty": target_qty,
+        "buffer_shares": buffer_shares,
         "current_alloc": round(cur_alloc, 6),
         "drift": round(drift, 6),
         "drift_band": DRIFT_BAND,
