@@ -48,6 +48,29 @@ Written by `engine/signal_engine.py`, one record per run:
 (they are ~2,700 rows/day of re-fetchable vendor data); the hash plus
 `source_query` lets anyone re-fetch and prove they hold the same series.
 
+**Contract: this is a log of runs, not of days** (e2bot-15, 2026-08-11).
+Re-running `signal_engine.py` on the same day appends another record for the
+same `signal_date`, and that is intended: recovery runs, determinism checks and
+operator sessions are all legitimate, and the duplication is what *proves*
+determinism — signal_date `2026-08-07` was computed three times on two machines
+and produced `bars_sha256 21c9635e…` every time.
+
+Two rules follow, and every reader of this log must apply them:
+
+- **The last record for a `signal_date` is authoritative.** This is not a new
+  convention; it is what the trader already does — `engine/execute.py` reads
+  `lines[-1]` of this file and hard-fails if that record is not from the last
+  completed session.
+- **Deduplicate by `signal_date` before comparing records across days.** Any
+  scan that diffs consecutive lines (allocation changes, transition counts)
+  must collapse each `signal_date` to its last record first, or a re-run that
+  straddles a genuine signal change will print a transition that never happened
+  or hide one that did. The worked one-liner is `RUNBOOK.md` §3.
+
+So the accounting rule below ("every trading day is accounted for") means
+**at least one** record per trading day, not exactly one. A duplicate is never
+a gap; zero records with no ops-log entry is.
+
 ### `log/trade_log.jsonl` — what was decided and sent
 
 Written by `engine/execute.py`, one record per run (including no-trade days):
@@ -69,9 +92,11 @@ the engine cannot record days it never ran: `market-closed`, `failure`,
 `halt`, `resume`, `manual`, `note`. Fields: `at_utc`, `et_date`, `event`,
 `note`.
 
-Rule: **every trading day is accounted for** — either by a signal+trade
-record, or by an ops record saying why not. A trading day with neither is a
-gap, and the runbook's liveness check exists to catch it.
+Rule: **every trading day is accounted for** — either by at least one
+signal+trade record, or by an ops record saying why not. A trading day with
+neither is a gap, and the runbook's liveness check exists to catch it.
+*More* than one signal record for a day is normal, not a gap (see the
+run-log contract above).
 
 `log/last_acted_signal.json` is *state*, not audit: it is the last signal
 acted on, overwritten each run. It is committed so the cloud runtime (fresh
