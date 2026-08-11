@@ -80,10 +80,18 @@ reconcile before the next run.
 tail -1 log/signal_log.jsonl | python3 -m json.tool
 
 # every allocation change ever
-python3 -c "import json;p=None
+# NOTE: the log records RUNS, not days — a day can hold several records
+# (recovery runs, determinism checks, operator sessions). Collapse each
+# signal_date to its LAST record — the authoritative one, and the one
+# execute.py acts on — before diffing, or a re-run that straddles a real
+# signal change prints a phantom transition or hides a real one. See AUDIT.md.
+python3 -c "import json
+last={}
 for l in open('log/signal_log.jsonl'):
-    r=json.loads(l)
-    if r['signal_alloc']!=p: print(r['signal_date'], p, '->', r['signal_alloc']); p=r['signal_alloc']"
+    r=json.loads(l); last[r['signal_date']]=r['signal_alloc']
+p=None
+for d in sorted(last):
+    if last[d]!=p: print(d, p, '->', last[d]); p=last[d]"
 
 # every order actually sent
 grep submitted log/trade_log.jsonl | python3 -m json.tool --json-lines 2>/dev/null || grep submitted log/trade_log.jsonl
