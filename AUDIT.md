@@ -67,6 +67,14 @@ Two rules follow, and every reader of this log must apply them:
   straddles a genuine signal change will print a transition that never happened
   or hide one that did. The worked one-liner is `RUNBOOK.md` §3.
 
+There are **three** readers of this log, and all three now apply those rules:
+`engine/execute.py` (`lines[-1]`), `RUNBOOK.md` §3's allocation-change scan,
+and the dashboard (`docs/dashboard/index.html`, via its `SIG_DAYS` helper).
+`docs/dashboard/data.js` itself stays a faithful record of *runs* — it is
+generated from this log verbatim, and its per-run table is where the
+determinism evidence is meant to be visible. Deduplication happens at the
+point of use, never in the data.
+
 So the accounting rule below ("every trading day is accounted for") means
 **at least one** record per trading day, not exactly one. A duplicate is never
 a gap; zero records with no ops-log entry is.
