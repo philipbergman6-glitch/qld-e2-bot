@@ -275,6 +275,18 @@ const shortD = iso => { const [y,m,d] = iso.split("-"); return `${m}/${d}`; };
 const lastSig = SIG[SIG.length - 1];
 const lastTrd = TRD[TRD.length - 1];
 
+/* SIG is a log of RUNS, not of days (AUDIT.md, e2bot-15): re-runs — recovery
+   runs, determinism checks, operator sessions — append another record for the
+   same signal_date, and the LAST record for a signal_date is authoritative.
+   Anything that charts or counts across days must read SIG_DAYS, not SIG;
+   raw SIG is for the per-run table below, where the duplication IS the point
+   (it is the cross-machine determinism evidence). */
+const SIG_DAYS = (() => {
+  const last = new Map();          // run date -> last record for it
+  for (const s of SIG) last.set(s.run, s);
+  return [...last.values()].sort((a, b) => a.run < b.run ? -1 : a.run > b.run ? 1 : 0);
+})();
+
 /* ---------- halt / live lamps ---------- */
 const haltEvents = OPS.filter(o => o.ev === "halt" || o.ev === "resume");
 const haltActive = haltEvents.length && haltEvents[haltEvents.length-1].ev === "halt";
@@ -317,7 +329,7 @@ function kpi(label, value, sub, color) {
     const liveEq = TRD.filter(t => t.equity != null && !t.dry);
     const cur = liveEq[liveEq.length-1];
     const ret = (cur.equity / ANCHOR.equity - 1) * 100;
-    const sigsSince = SIG.filter(s => s.d >= ANCHOR.d || s.run >= ANCHOR.d);
+    const sigsSince = SIG_DAYS.filter(s => s.d >= ANCHOR.d || s.run >= ANCHOR.d);
     const qldRet = sigsSince.length > 1 ? (lastSig.px / sigsSince[0].px - 1) * 100 : null;
     const dayN = new Set(liveEq.map(t => t.runEt)).size;
     k.push(kpi("Equity — 12:00 ET mark", money(cur.equity), `forward test day ${dayN}`, "var(--violet)"));
@@ -363,8 +375,8 @@ function kpi(label, value, sub, color) {
   const eqPts = [];
   const seen = new Set();
   for (const t of TRD) if (t.equity != null && !t.dry && !seen.has(t.runEt)) { seen.add(t.runEt); eqPts.push({d:t.runEt, v:t.equity}); }
-  const px0 = SIG.find(s => s.run >= ANCHOR.d) || lastSig;
-  const qldPts = SIG.filter(s => s.run >= ANCHOR.d).map(s => ({d:s.run, v: s.px / px0.px * ANCHOR.equity}));
+  const px0 = SIG_DAYS.find(s => s.run >= ANCHOR.d) || lastSig;
+  const qldPts = SIG_DAYS.filter(s => s.run >= ANCHOR.d).map(s => ({d:s.run, v: s.px / px0.px * ANCHOR.equity}));
   const all = [...eqPts, ...qldPts];
   const W=1160, H=300, P={l:56,r:14,t:16,b:26};
   const dates = [...new Set(all.map(p=>p.d))].sort();
