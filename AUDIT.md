@@ -179,9 +179,14 @@ but an Alpaca order our log cannot explain breaks the claim outright.
 Stated so the argument is not oversold:
 
 - **Not third-party timestamped.** Commit times are self-asserted (Alpaca's
-  order times are not). A determined operator could rewrite the repo and
-  force-push; the defence is convention (§2) plus the fact that Alpaca's
-  independent record would have to be forged in step too, which it cannot be.
+  order times are not). Nothing in a commit proves *when* it was made, even a
+  signed one — a signature says who, not when. The defence is convention (§2)
+  plus the fact that Alpaca's independent record would have to be forged in
+  step too, which it cannot be.
+  *Amended 2026-08-12 (e2bot-20): the older form of this bullet also said "a
+  determined operator could rewrite the repo and force-push". For the daily
+  bot commits that is no longer true — see §4a. It remains true of the
+  operator-authored commits.*
 - **Not a proof the vendor data was right** — only that the engine acted on
   the series it recorded, from a named query.
 - **Paper only.** No real capital, so fills are Alpaca's simulation, not
@@ -190,6 +195,65 @@ Stated so the argument is not oversold:
   (adjustment changes), the old hash stops reproducing — that is a *feature*
   (it flags the restatement) but it means step 2 can require a same-vintage
   feed.
+
+## 4a. Who signed what (e2bot-20, 2026-08-12)
+
+Established by inspecting every commit on `main`, not by assumption. The trail
+divides into three kinds of commit, and only one of them is rewritable by the
+operator:
+
+| written by | committer | signature | who could forge it |
+|---|---|---|---|
+| the cloud routine (every daily run) | `Claude <noreply@anthropic.com>` | SSH, ed25519, key published by GitHub user `claude` | nobody without that key |
+| a PR merged in the GitHub UI | `GitHub <noreply@github.com>` | GitHub's web-flow PGP key | nobody without GitHub |
+| the operator's Mac, from 2026-08-12 | `philip.bergman6@gmail.com` | SSH, ed25519, key registered on GitHub as a signing key | the operator |
+| the operator's Mac, before 2026-08-12 | `philip.bergman6@gmail.com` | **none** | the operator |
+
+**The daily record is already tamper-evident.** Every one of the bot's commits
+since go-live carries an SSH signature over the commit object — so the message,
+the tree and the parent are all covered. The signing key is not ours and is not
+on any machine we control; the operator cannot produce a commit that verifies
+as `claude`, and cannot alter one that does without the signature failing. This
+was not designed in — the cloud environment signs on its own — but it is the
+half of §4's old concession that no longer holds.
+
+**The operator's own commits were the unsigned half**, including the two hand
+interventions that placed orders (`bda3061` 2026-08-07, `d57b983` 2026-08-10) —
+exactly the entries an outside reader has most reason to question. Signing was
+turned on for the operator's machine on 2026-08-12, so this closes going
+forward and not backwards: everything before that date is unsigned and stays
+unsigned, because history is never rewritten (§2). Note the honest limit — an
+operator signature is a claim by the operator about the operator, so it proves
+authorship, not disinterest. Its value is that a *third party* who took push
+access could no longer write commits that pass, and that the operator can no
+longer quietly re-write their own past ones.
+
+The operator key is signing-only: it grants no push or login access, so it can
+be published, revoked and rotated without touching anything else.
+
+```
+gpg.format          = ssh
+user.signingkey     = ~/.ssh/qld_e2_signing.pub
+commit.gpgsign      = true
+```
+
+Check it yourself, from a clone, without trusting this file:
+
+```
+bash scripts/verify_trail.sh
+```
+
+It fetches the signing keys from `https://api.github.com/users/claude/ssh_signing_keys`
+— the anchor, since a key list committed here would be as rewritable as the
+history it vouches for — and verifies each signature locally with `git`. It
+exits non-zero if a bot commit fails to verify, which means either history was
+rewritten or a key was withdrawn; escalate per `RUNBOOK.md` §7. Unsigned
+operator commits are listed, not failed.
+
+The script is **not on the daily critical path** and must never be put there.
+`RUNBOOK.md` §4 names the trail's worst failure mode as a run that reports
+success while `main` never moved; an integrity check that could block a push
+would manufacture exactly that.
 
 ## 5. Corrections
 
