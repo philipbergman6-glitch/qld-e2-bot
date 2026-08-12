@@ -83,12 +83,23 @@ a gap; zero records with no ops-log entry is.
 
 Written by `engine/execute.py`, one record per run (including no-trade days):
 `run_at_utc`, `signal_date`, `signal_alloc`, `last_acted_alloc`, `equity`,
-`ref_px`, `current_qty`, `target_qty`, `action`, `order_id`, `dry_run`.
+`cash`, `ref_px`, `current_qty`, `target_qty`, `requested_delta`,
+`cash_cap_qty`, `capped_by_cash`, `buffer_shares`, `current_alloc`, `drift`,
+`drift_band`, `action`, `order_id`, `dry_run`, and `order_reason` on ordering
+runs. Records written before 2026-08-11 carry only the first-listed subset;
+the fields arrived with e2bot-11 (drift) and e2bot-14 (cash).
 
-`action` is one of: `submitted MOC <side> <qty> QLD` · `would submit …`
-(dry-run) · `hold (signal unchanged; drift never rebalanced)` ·
-`hold (already at target)` · `HALTED by HALT file — no order` (adds
-`halt_reason`).
+The cash fields exist because QLD is non-marginable, so a buy is paid from
+`cash` while `target_qty` is sized off `equity` (e2bot-14): `requested_delta`
+is the order the target implies, `cash_cap_qty` what cash can pay for, and
+`capped_by_cash` says which one was sent. `buffer_shares` is the headroom the
+uncapped order would have had, in shares — it was 0.44 on the 2026-08-11
+top-up, which is what the cap now trims.
+
+`action` is one of: `submitted MOC <side> <qty> QLD (<reason>)` · `would
+submit …` (dry-run) · `hold (signal unchanged; drift …% within band …)` ·
+`hold (already at target)` · `hold (buy N unaffordable: cash … funds 0
+shares)` · `HALTED by HALT file — no order` (adds `halt_reason`).
 
 `equity` on every line is also the daily equity series the weekly rollup and
 all forward-test comparisons read.
@@ -142,8 +153,15 @@ For any day D, without trusting us:
    `px`/`sma200`/`sma20`/`vol`/`vol_hi_p90`/`volmax60` make the branch taken
    checkable on paper without re-running anything.
 3. **Check the order followed the decision.** `target_qty` must equal
-   `floor(signal_alloc × equity / ref_px)`, and an order must exist only when
-   `signal_alloc ≠ last_acted_alloc` (execution spec rules 2–3).
+   `floor(signal_alloc × equity / ref_px)` and `requested_delta` must equal
+   `target_qty − current_qty` (execution spec rule 2). An order must exist only
+   when `signal_alloc ≠ last_acted_alloc` **or** `drift > drift_band` (rule 3,
+   as amended by e2bot-11). Its qty is `requested_delta` capped on buys at
+   `cash_cap_qty = floor(cash × 0.995 / ref_px)` (e2bot-14) — a sell is never
+   capped, and a cap that bites must show `capped_by_cash: true` and, on an
+   ordering run, say so in `order_reason`. (`capped_by_cash` describes the
+   sizing, not the action, so it can also read true on a hold — a
+   rounding-sized buy the drift band suppressed anyway.)
 4. **Match against Alpaca.** `bash scripts/alpaca.sh orders all` (or the
    dashboard) — the `order_id` in the trade log must exist server-side, with
    the same symbol, side, qty, `time_in_force=cls`, and a `submitted_at`

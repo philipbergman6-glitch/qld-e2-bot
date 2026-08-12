@@ -41,8 +41,13 @@ Signal from day-N close, QLD price/returns only:
 
 1. Signal from close N → **market-on-close** order day N+1 (submitted before
    15:45 ET) → position live from N+2. Matches backtest `sig.shift(2)`.
-2. Whole shares, round down; target dollars = alloc × account equity.
-3. Trade **only on signal change**; never rebalance for drift.
+2. Whole shares, round down; target dollars = alloc × account equity. A buy is
+   additionally capped at what **cash** can pay for, `floor(cash × 0.995 /
+   ref_px)` — QLD is non-marginable, so equity is the target but cash is the
+   funding (amended by e2bot-14, 2026-08-11; sells are never capped).
+3. Trade on signal change **or** when realized allocation has drifted more than
+   1% from the signal (amended by e2bot-11, 2026-08-10; the original spec never
+   rebalanced for drift, which made partial fills structurally invisible).
 4. Missed days self-heal: next run trades toward that day's fresh signal;
    never back-fill.
 5. Paper account reset to $100,000 before go-live.

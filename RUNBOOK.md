@@ -174,7 +174,9 @@ no back-fill of what was missed during the halt.
 
 - **The E2 rule is frozen.** Changing it requires a new decision on the
   wayfinder map (`MAP-e2-bot.md` in the QLD-model repo), not an edit here.
-- Engine changes: separate commit, never inside a daily commit, and re-run the
+- Engine changes: separate commit, never inside a daily commit, run the unit
+  tests (`python3 -m unittest discover -s tests`, no network or credentials
+  needed) plus `python3 engine/execute.py --dry-run`, and re-run the
   reference check (`reference/e2_reference_signals.csv`, method in the
   QLD-model repo's `assets/e2bot05-verification-report.md`) before the next
   trading day.

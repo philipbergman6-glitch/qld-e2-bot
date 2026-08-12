@@ -62,6 +62,36 @@ ET = ZoneInfo("America/New_York")
 # noise (1 share ~ 0.09% of equity at current prices).
 DRIFT_BAND = 0.01
 
+# Fraction of cash held back when sizing a buy (e2bot-14, decided 2026-08-11).
+#
+# Why this exists: target_qty is sized off EQUITY, but QLD is non-marginable
+# (margin_requirement_long 100, asset_marginable false), so a buy is paid from
+# CASH — and at alloc 1.0 cash is exactly equity minus the position, i.e. the
+# buffer is structurally zero. The order is sized at an intraday reference price
+# and fills at the close, so any rise in between makes it unaffordable and it
+# fills short by roughly delta * (close/ref - 1). The 2026-08-11 top-up (buy 188
+# at ref 91.18, cash 17181.58) had 0.44 shares of headroom.
+#
+# Why 0.005: it must cover the intraday-to-close move on the LAST share only,
+# not the whole order, so it is small by construction. 0.5% of cash at alloc 1.0
+# is ~0.09 shares of slack per 188 ordered — enough to absorb a rounding cent
+# and a normal close-vs-reference tick, while costing at most one share of
+# under-fill. Under-filling by one share is self-healing: the e2bot-11 drift gate
+# sees the realized shortfall the next day. Over-ordering is not — an
+# unaffordable MOC order expires partially filled, which is exactly the failure
+# e2bot-13/14 traced.
+CASH_BUFFER = 0.005
+
+
+def affordable_qty(cash, px, eps=CASH_BUFFER):
+    """Whole shares payable from `cash` at `px`, keeping an `eps` fraction back.
+
+    Never negative: a cash deficit affords zero shares, it does not imply a sell.
+    """
+    if px <= 0:
+        raise ValueError(f"non-positive price {px}")
+    return max(0, math.floor(cash * (1 - eps) / px))
+
 
 def fatal(msg):
     print(f"FATAL: {msg}", file=sys.stderr)
@@ -167,8 +197,9 @@ def main():
     if equity <= 0:
         fatal(f"non-positive equity {equity}")
     # QLD is non-marginable (margin_requirement_long 100), so cash — not equity,
-    # not buying_power — is what a buy is actually paid from. Recorded only; the
-    # sizing below still uses equity (e2bot-14, decided 2026-08-11).
+    # not buying_power — is what a buy is actually paid from. The TARGET is still
+    # sized off equity (exec spec rule 2, unchanged); cash only caps the ORDER
+    # that walks toward it (e2bot-14, decided 2026-08-11).
     cash = float(account["cash"])
 
     pos = api("GET", f"/positions/{SYM}")
@@ -182,13 +213,20 @@ def main():
             last_acted = json.load(f).get("signal_alloc")
 
     target_qty = math.floor(alloc * equity / px)
-    delta = target_qty - cur_qty
+    requested_delta = target_qty - cur_qty
 
-    # How many shares of headroom the cash leaves beyond the order, priced at the
-    # intraday reference. Negative means the order cannot be paid for in full at
-    # this price and can only fill short; near zero means a rise between now and
-    # the close does the same. Diagnostic only — nothing branches on it yet.
-    buffer_shares = round(cash / px - delta, 2) if delta > 0 else None
+    # How many shares of headroom the cash leaves beyond the UNCAPPED order,
+    # priced at the intraday reference. Negative means the order could not have
+    # been paid for in full at this price; near zero means a rise between now and
+    # the close would do the same. Diagnostic — the cap below is what acts on it.
+    buffer_shares = round(cash / px - requested_delta, 2) if requested_delta > 0 else None
+
+    # Cap a buy at what cash can actually pay for. Sells are never capped: they
+    # raise cash. Under-ordering is self-healing (the drift gate re-fires
+    # tomorrow); over-ordering expires partially filled, which is the bug.
+    cash_cap_qty = affordable_qty(cash, px) if requested_delta > 0 else None
+    delta = min(requested_delta, cash_cap_qty) if requested_delta > 0 else requested_delta
+    capped = delta != requested_delta
 
     # Realized allocation, derived from shares actually HELD — never from what
     # was ordered. This is what makes a partial fill visible to the gate below.
@@ -205,6 +243,9 @@ def main():
         "ref_px": px,
         "current_qty": cur_qty,
         "target_qty": target_qty,
+        "requested_delta": requested_delta,
+        "cash_cap_qty": cash_cap_qty,
+        "capped_by_cash": capped,
         "buffer_shares": buffer_shares,
         "current_alloc": round(cur_alloc, 6),
         "drift": round(drift, 6),
@@ -219,9 +260,14 @@ def main():
             f"hold (signal unchanged; drift {drift:.2%} within band {DRIFT_BAND:.0%})"
         )
     elif delta == 0:
-        decision["action"] = "hold (already at target)"
+        decision["action"] = (
+            f"hold (buy {requested_delta} unaffordable: cash {cash:.2f} at {px} "
+            f"funds 0 shares)" if capped else "hold (already at target)"
+        )
     else:
         why = "signal change" if last_acted != alloc else f"drift {drift:.2%}"
+        if capped:
+            why += f"; buy capped {requested_delta}->{delta} by cash {cash:.2f}"
         decision["order_reason"] = why
         side = "buy" if delta > 0 else "sell"
         order_body = {"symbol": SYM, "qty": str(abs(delta)), "side": side,
