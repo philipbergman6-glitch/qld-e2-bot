@@ -45,11 +45,18 @@ echo "Fetching published signing keys from GitHub..."
 for entry in "${SIGNERS[@]}"; do
   read -r account email <<< "$entry"
   url="https://api.github.com/users/${account}/ssh_signing_keys"
-  if ! keys=$(curl -fsS "$url" | grep -o 'ssh-[a-z0-9-]* [A-Za-z0-9+/=]*'); then
-    echo "FAIL: could not fetch signing keys for '$account' ($url)." >&2
+  if ! body=$(curl -fsS "$url"); then
+    echo "FAIL: could not reach $url — no network, or GitHub is rate-limiting." >&2
     exit 1
   fi
-  [[ -n "$keys" ]] || { echo "FAIL: no signing keys published for '$account'." >&2; exit 1; }
+  keys=$(printf '%s' "$body" | grep -o 'ssh-[a-z0-9-]* [A-Za-z0-9+/=]*' || true)
+  if [[ -z "$keys" ]]; then
+    echo "FAIL: '$account' publishes no SSH signing keys, so its commits cannot" >&2
+    echo "      be checked. Register one (GitHub → Settings → SSH and GPG keys →" >&2
+    echo "      New SSH key → key type 'Signing Key'), or drop the account from" >&2
+    echo "      SIGNERS in this script and say so in AUDIT.md §4a." >&2
+    exit 1
+  fi
   echo "$keys" | sed "s|^|${email} |" >> "$SIGNERS_FILE"
   echo "  $(echo "$keys" | wc -l | tr -d ' ') key(s) for $account <$email> — $url"
 done
