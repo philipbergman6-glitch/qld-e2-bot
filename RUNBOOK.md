@@ -73,6 +73,24 @@ Signal date == fill date, or fill two+ trading days after signal → the bot
 is running a different (worse) strategy than the backtest. Halt (§5) and
 reconcile before the next run.
 
+## 2c. Trail integrity check (weekly, with the rollup)
+
+Every daily bot commit is SSH-signed by a key we do not hold (`AUDIT.md` §4a),
+so history rewritten by hand is detectable rather than merely forbidden:
+
+```bash
+bash scripts/verify_trail.sh    # exits non-zero if a bot commit fails
+```
+
+A `SIGNATURE DID NOT VERIFY` line means either `main` was rewritten or the
+signing key was withdrawn. Halt (§5) and escalate (§7) before deciding which.
+Unsigned lines are the operator's own commits and are expected — that half of
+the trail rests on §6's conventions.
+
+Never wire this into `routines/daily.md`. An integrity check that can block a
+push produces the failure §4 calls the worst one: a run reporting success while
+`main` never moved.
+
 ## 3. Reading the logs
 
 ```bash
