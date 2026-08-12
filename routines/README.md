@@ -27,7 +27,14 @@ and `20 16 * * 5` instead.
    Values: `~/Documents/Coding_Projects/qld-e2-bot/.env` on the Mac
    (paper keys only; no Perplexity — this bot has no LLM in the signal path).
 4. Environment setup script (the engine needs these; stdlib covers the rest):
-   `pip install pandas numpy`
+   `pip install -r requirements.txt`
+   Not `pip install pandas numpy` — unpinned resolution is not safe. On Python
+   3.14 it produces pandas 2.2.3 + numpy 2.5.2, a pair that imports cleanly and
+   then segfaults inside the engine's computation (e2bot-19). `requirements.txt`
+   declares a tested range; CI proves the rule is unchanged at both of its ends.
+   **This lives in the cloud routine's setup script, so changing the repo file
+   does nothing until it is re-pasted into the routine UI** — same as the
+   routine prompts themselves.
 
 ## Failure model
 

@@ -1,0 +1,19 @@
+# Exact environment of the operator machine, recorded 2026-08-12 (e2bot-19).
+#
+# NOT the install contract — requirements.txt is (a tested range). This file
+# exists for one reader: an auditor following AUDIT.md §3 step 2 who wants to
+# reconstruct the exact interpreter and libraries a signal was computed under,
+# rather than trusting that any version in the supported range reproduces it.
+#
+# Python 3.14.6 (CPython, darwin/arm64)
+#
+# Caveat worth knowing before trusting this file: it records the machine an
+# OPERATOR session ran on. The daily signals are computed by the cloud routine,
+# whose container is not this machine and whose exact versions are not recorded
+# anywhere until the version stamp lands in the signal record (e2bot-19 part 4,
+# deferred). Until then this is the best available reconstruction target, not a
+# statement of what produced any particular logged signal.
+
+numpy==2.5.1
+pandas==3.0.5
+python-dateutil==2.9.0.post0

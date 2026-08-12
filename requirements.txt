@@ -1,0 +1,23 @@
+# Runtime dependencies for the E2 engine (wayfinder ticket e2bot-19).
+#
+# This is the install contract the cloud routine uses:
+#     pip install -r requirements.txt
+# It replaces the unpinned `pip install pandas numpy` that routines/README.md
+# prerequisite 4 used to specify. Unpinned resolution is not safe: on Python
+# 3.14 it produced pandas 2.2.3 + numpy 2.5.2, an ABI-mismatched pair that
+# imports cleanly and then segfaults inside the engine's computation.
+#
+# A RANGE, not a freeze, and the range is tested rather than asserted:
+# .github/workflows/ci.yml runs the full suite (including the frozen-rule
+# reference check) at BOTH ends on every push. The rule was measured to produce
+# bit-identical output across pandas 1.5.3 / 2.2.3 / 3.0.5 on Python
+# 3.11 / 3.13 / 3.14 — 0 mismatches over 4,786 reference days in every case —
+# so an exact freeze buys no signal fidelity, while risking an unbuildable
+# wheel (and so a dead daily run) whenever the cloud image's Python moves.
+#
+# For byte-level reconstruction of the operator's environment, see
+# requirements.lock. Everything else the engine needs is stdlib; the test
+# suite is stdlib `unittest` and adds no dependency.
+
+pandas>=1.5,<4
+numpy>=1.24,<3
