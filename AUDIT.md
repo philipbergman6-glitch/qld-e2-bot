@@ -206,7 +206,8 @@ operator:
 |---|---|---|---|
 | the cloud routine (every daily run) | `Claude <noreply@anthropic.com>` | SSH, ed25519, key published by GitHub user `claude` | nobody without that key |
 | a PR merged in the GitHub UI | `GitHub <noreply@github.com>` | GitHub's web-flow PGP key | nobody without GitHub |
-| the operator's Mac | `philip.bergman6@gmail.com` | **none** | the operator |
+| the operator's Mac, from 2026-08-12 | `philip.bergman6@gmail.com` | SSH, ed25519, key registered on GitHub as a signing key | the operator |
+| the operator's Mac, before 2026-08-12 | `philip.bergman6@gmail.com` | **none** | the operator |
 
 **The daily record is already tamper-evident.** Every one of the bot's commits
 since go-live carries an SSH signature over the commit object — so the message,
@@ -216,10 +217,25 @@ as `claude`, and cannot alter one that does without the signature failing. This
 was not designed in — the cloud environment signs on its own — but it is the
 half of §4's old concession that no longer holds.
 
-**The operator's own commits are the unsigned half**, including the two hand
-interventions that placed orders (`bda3061` 2026-08-07, `d57b983` 2026-08-10).
-Those are exactly the entries an outside reader has most reason to question,
-and they rest on convention (§2) alone.
+**The operator's own commits were the unsigned half**, including the two hand
+interventions that placed orders (`bda3061` 2026-08-07, `d57b983` 2026-08-10) —
+exactly the entries an outside reader has most reason to question. Signing was
+turned on for the operator's machine on 2026-08-12, so this closes going
+forward and not backwards: everything before that date is unsigned and stays
+unsigned, because history is never rewritten (§2). Note the honest limit — an
+operator signature is a claim by the operator about the operator, so it proves
+authorship, not disinterest. Its value is that a *third party* who took push
+access could no longer write commits that pass, and that the operator can no
+longer quietly re-write their own past ones.
+
+The operator key is signing-only: it grants no push or login access, so it can
+be published, revoked and rotated without touching anything else.
+
+```
+gpg.format          = ssh
+user.signingkey     = ~/.ssh/qld_e2_signing.pub
+commit.gpgsign      = true
+```
 
 Check it yourself, from a clone, without trusting this file:
 

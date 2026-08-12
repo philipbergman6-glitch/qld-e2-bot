@@ -15,16 +15,22 @@
 #   bash scripts/verify_trail.sh              # whole history on main
 #   bash scripts/verify_trail.sh <since-sha>  # since a commit, exclusive
 #
-# Exit 0: every bot commit verified. Exit 1: one did not, or a key fetch
-# failed. Unsigned operator commits are reported, not failed — see §4a.
+# Exit 0: every signature present verified. Exit 1: one did not, or a key
+# fetch failed. Commits carrying no signature at all are reported, not failed —
+# the operator's pre-2026-08-12 history is unsigned and stays that way, because
+# history is never rewritten (§2). See §4a.
 
 set -euo pipefail
 
-# GitHub accounts whose published SSH signing keys are trusted, and the
-# committer email each signs as. The bot's daily commits are the load-bearing
-# ones; add the operator here once an operator signing key is registered.
-BOT_ACCOUNT="claude"
-BOT_EMAIL="noreply@anthropic.com"
+# GitHub accounts whose published SSH signing keys are trusted, as
+# "<github-account> <committer-email>". Both halves of the trail sign: the
+# cloud routine as `claude` (its key is Anthropic's, not ours), the operator
+# as themselves. Commits predating 2026-08-12 from the operator are unsigned
+# and stay that way — history is never rewritten (AUDIT.md §2).
+SIGNERS=(
+  "claude                 noreply@anthropic.com"
+  "philipbergman6-glitch  philip.bergman6@gmail.com"
+)
 
 SINCE="${1:-}"
 RANGE="HEAD"
@@ -32,21 +38,24 @@ RANGE="HEAD"
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
-SIGNERS="$WORK/allowed_signers"
+SIGNERS_FILE="$WORK/allowed_signers"
 
-echo "Fetching published signing keys for GitHub user '$BOT_ACCOUNT'..."
-if ! curl -fsS "https://api.github.com/users/${BOT_ACCOUNT}/ssh_signing_keys" \
-     | grep -o 'ssh-[a-z0-9-]* [A-Za-z0-9+/=]*' \
-     | sed "s|^|${BOT_EMAIL} |" > "$SIGNERS"; then
-  echo "FAIL: could not fetch signing keys for '$BOT_ACCOUNT'." >&2
-  exit 1
-fi
-KEYCOUNT=$(wc -l < "$SIGNERS" | tr -d ' ')
-[[ "$KEYCOUNT" -gt 0 ]] || { echo "FAIL: no signing keys published for '$BOT_ACCOUNT'." >&2; exit 1; }
-echo "  $KEYCOUNT key(s) — https://api.github.com/users/${BOT_ACCOUNT}/ssh_signing_keys"
+echo "Fetching published signing keys from GitHub..."
+: > "$SIGNERS_FILE"
+for entry in "${SIGNERS[@]}"; do
+  read -r account email <<< "$entry"
+  url="https://api.github.com/users/${account}/ssh_signing_keys"
+  if ! keys=$(curl -fsS "$url" | grep -o 'ssh-[a-z0-9-]* [A-Za-z0-9+/=]*'); then
+    echo "FAIL: could not fetch signing keys for '$account' ($url)." >&2
+    exit 1
+  fi
+  [[ -n "$keys" ]] || { echo "FAIL: no signing keys published for '$account'." >&2; exit 1; }
+  echo "$keys" | sed "s|^|${email} |" >> "$SIGNERS_FILE"
+  echo "  $(echo "$keys" | wc -l | tr -d ' ') key(s) for $account <$email> — $url"
+done
 echo
 
-bot=0; bot_bad=0; gh_merge=0; unsigned=0
+ok=0; bad=0; gh_merge=0; unsigned=0
 
 while IFS='|' read -r sha email date subject; do
   header=$(git cat-file commit "$sha")
@@ -56,34 +65,40 @@ while IFS='|' read -r sha email date subject; do
     *)                                   kind=none ;;
   esac
 
+  case "$email" in
+    noreply@anthropic.com) who="bot     " ;;
+    noreply@github.com)    who="github  " ;;
+    *)                     who="operator" ;;
+  esac
+
   if [[ "$kind" == ssh ]]; then
-    if git -c gpg.ssh.allowedSignersFile="$SIGNERS" verify-commit "$sha" 2>/dev/null; then
-      verdict="signed-bot   OK"
-      bot=$((bot + 1))
+    if git -c gpg.ssh.allowedSignersFile="$SIGNERS_FILE" verify-commit "$sha" 2>/dev/null; then
+      verdict="$who  signed  OK"
+      ok=$((ok + 1))
     else
-      verdict="signed-bot   *** SIGNATURE DID NOT VERIFY ***"
-      bot_bad=$((bot_bad + 1))
+      verdict="$who  signed  *** DID NOT VERIFY ***"
+      bad=$((bad + 1))
     fi
   elif [[ "$kind" == pgp ]]; then
-    # GitHub's web-flow key signs PR merges made in the browser. Not a bot
-    # decision record; reported for completeness, not verified here.
-    verdict="signed-gpg   (github web-flow, not checked)"
+    # GitHub's web-flow key signs PR merges made in the browser. Not a
+    # decision record, and not an SSH signature; reported, not verified here.
+    verdict="$who  pgp     (github web-flow, not checked)"
     gh_merge=$((gh_merge + 1))
   else
-    verdict="UNSIGNED     (operator machine)"
+    verdict="$who  UNSIGNED"
     unsigned=$((unsigned + 1))
   fi
 
-  printf '%s  %s  %-45s  %s\n' "${sha:0:7}" "${date:0:10}" "$verdict" "${subject:0:50}"
+  printf '%s  %s  %-46s  %s\n' "${sha:0:7}" "${date:0:10}" "$verdict" "${subject:0:50}"
 done < <(git log --reverse --format='%H|%ce|%cI|%s' "$RANGE")
 
 echo
-echo "bot commits verified: $bot   github merges: $gh_merge   unsigned: $unsigned   FAILED: $bot_bad"
+echo "verified: $ok   github merges: $gh_merge   unsigned: $unsigned   FAILED: $bad"
 
-if [[ "$bot_bad" -gt 0 ]]; then
+if [[ "$bad" -gt 0 ]]; then
   echo
-  echo "A bot commit's signature did not verify. Either history was rewritten or"
-  echo "the signing key was rotated and the old key withdrawn. Do not trade on"
-  echo "this; escalate per RUNBOOK.md §7." >&2
+  echo "A signature did not verify. Either history was rewritten or a signing key" >&2
+  echo "was rotated and the old key withdrawn. Do not trade on this; halt" >&2
+  echo "(RUNBOOK.md §5) and escalate (§7)." >&2
   exit 1
 fi
