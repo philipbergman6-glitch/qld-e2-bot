@@ -1,0 +1,45 @@
+# CI for the E2 engine (wayfinder ticket e2bot-19).
+#
+# Two jobs, both offline: no Alpaca keys, no secrets, no network beyond pip.
+# Both test suites are pure arithmetic over data committed to this repo, which
+# is deliberate — CI that needed live credentials could not be run by the third
+# party AUDIT.md §3 addresses.
+#
+# The matrix is the point. requirements.txt declares a RANGE, and these two
+# jobs test its ends, so the range is a claim with evidence rather than an
+# assertion. If a future pandas changes `expanding().quantile()` or `rolling()`
+# semantics, `tests/test_signal_reference.py` fails here before it can move a
+# live signal.
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # Oldest supported environment: the floor of requirements.txt, pinned exactly
+  # so this job tests the boundary and not whatever pip resolves that week.
+  floor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install "pandas==1.5.3" "numpy==1.24.4"
+      - run: python -c "import pandas, numpy, sys; print(sys.version); print(pandas.__version__, numpy.__version__)"
+      - run: python -m unittest discover -s tests -v
+
+  # Newest environment the contract allows, installed the way the cloud routine
+  # installs it — so this job also verifies requirements.txt is installable.
+  current:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements.txt
+      - run: python -c "import pandas, numpy, sys; print(sys.version); print(pandas.__version__, numpy.__version__)"
+      - run: python -m unittest discover -s tests -v
