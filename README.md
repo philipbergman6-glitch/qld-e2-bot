@@ -4,6 +4,10 @@ Autonomous paper-trading bot for the frozen **E2 QLD rule** ("graded
 vol-confirmed re-entry"). Deterministic Python computes the signal; Claude
 glue only schedules, executes, and reports. Alpaca paper account only.
 
+E2 is my own backtested rule. This repo trades a **paper** account only, is a
+systems-engineering exercise (deterministic engine, LLM as scheduler, git as
+audit trail), and is not investment advice.
+
 ## Architecture
 
 Git is the home and the truth. Alpaca is execution only, plus its market-data
