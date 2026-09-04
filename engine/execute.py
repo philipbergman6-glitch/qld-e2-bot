@@ -18,14 +18,24 @@ for (or confirmed equal). log/trade_log.jsonl is append-only.
 Kill switch: a `HALT` file at the repo root suppresses all ordering (exit 0,
 logged as HALTED, state untouched). See RUNBOOK.md.
 
+Idempotency: before any POST, open orders for the symbol are checked; if one
+exists (e.g. a re-run on the same day while a MOC order rests), the run holds.
+
+Structure: `decide()` is the pure rule (sizing, drift gate, cash cap) and is
+unit-tested in tests/test_execute_decide.py; `main()` does I/O only — reads
+the signal and state, calls Alpaca, writes the logs.
+
 Usage: python3 engine/execute.py [--dry-run]
 Run AFTER engine/signal_engine.py on the same day; reads the newest record
 from log/signal_log.jsonl and hard-fails if it is not from the last completed
 session (i.e. the signal is stale). --dry-run prints the decision, sends no
 order, and does not update state.
 """
+from __future__ import annotations
+
 import datetime as dt
 import json
+from dataclasses import dataclass
 import math
 import os
 import sys
@@ -95,6 +105,93 @@ def affordable_qty(cash, px, eps=CASH_BUFFER):
     return max(0, math.floor(cash * (1 - eps) / px))
 
 
+@dataclass(frozen=True)
+class Decision:
+    """The pure output of `decide()`: what to do and every number behind it.
+
+    `action` is one of "hold", "order", "halt". `side`/`qty` are set only for
+    "order" (qty is always positive; side says which way). `reason` is the
+    human-readable parenthetical that ends up in the trade log's `action`
+    string. The remaining fields are the sizing diagnostics AUDIT.md §1 lists
+    for `log/trade_log.jsonl`, so `main()` can log them without recomputing.
+    """
+    action: str
+    side: str | None
+    qty: int
+    reason: str
+    target_qty: int
+    requested_delta: int
+    cash_cap_qty: int | None
+    capped_by_cash: bool
+    buffer_shares: float | None
+    current_alloc: float
+    drift: float
+
+
+def decide(signal_alloc, last_acted_alloc, equity, cash, position_qty, ref_px, halted):
+    """Execution spec rules 2–3 as a pure function. No I/O, no clock, no state.
+
+    signal_alloc     today's signal (0.0 / 0.5 / 1.0)
+    last_acted_alloc the signal the last order was placed for (None = never)
+    equity, cash     account equity and settled cash, dollars
+    position_qty     whole QLD shares currently HELD (not ordered)
+    ref_px           intraday reference price used for sizing
+    halted           True when the HALT kill switch is present
+
+    Returns a Decision. Raises ValueError on inputs the rule cannot act on;
+    callers hard-fail on that, never default.
+    """
+    if signal_alloc not in (0.0, 0.5, 1.0):
+        raise ValueError(f"invalid signal_alloc {signal_alloc}")
+    if equity <= 0:
+        raise ValueError(f"non-positive equity {equity}")
+    if ref_px <= 0:
+        raise ValueError(f"non-positive price {ref_px}")
+    if position_qty < 0:
+        raise ValueError(f"negative position {position_qty}")
+
+    target_qty = math.floor(signal_alloc * equity / ref_px)
+    requested_delta = target_qty - position_qty
+
+    # How many shares of headroom the cash leaves beyond the UNCAPPED order,
+    # priced at the intraday reference. Negative means the order could not have
+    # been paid for in full at this price; near zero means a rise between now and
+    # the close would do the same. Diagnostic — the cap below is what acts on it.
+    buffer_shares = round(cash / ref_px - requested_delta, 2) if requested_delta > 0 else None
+
+    # Cap a buy at what cash can actually pay for. Sells are never capped: they
+    # raise cash. Under-ordering is self-healing (the drift gate re-fires
+    # tomorrow); over-ordering expires partially filled, which is the bug.
+    cash_cap_qty = affordable_qty(cash, ref_px) if requested_delta > 0 else None
+    delta = min(requested_delta, cash_cap_qty) if requested_delta > 0 else requested_delta
+    capped = delta != requested_delta
+
+    # Realized allocation, derived from shares actually HELD — never from what
+    # was ordered. This is what makes a partial fill visible to the gate below.
+    cur_alloc = position_qty * ref_px / equity
+    drift = abs(cur_alloc - signal_alloc)
+
+    diag = dict(target_qty=target_qty, requested_delta=requested_delta,
+                cash_cap_qty=cash_cap_qty, capped_by_cash=capped,
+                buffer_shares=buffer_shares, current_alloc=round(cur_alloc, 6),
+                drift=round(drift, 6))
+
+    if halted:
+        return Decision("halt", None, 0, "HALT file present", **diag)
+    if last_acted_alloc == signal_alloc and drift <= DRIFT_BAND:
+        return Decision("hold", None, 0,
+                        f"signal unchanged; drift {drift:.2%} within band {DRIFT_BAND:.0%}",
+                        **diag)
+    if delta == 0:
+        reason = (f"buy {requested_delta} unaffordable: cash {cash:.2f} at {ref_px} "
+                  f"pays for 0 shares" if capped else "already at target")
+        return Decision("hold", None, 0, reason, **diag)
+    why = "signal change" if last_acted_alloc != signal_alloc else f"drift {drift:.2%}"
+    if capped:
+        why += f"; buy capped {requested_delta}->{delta} by cash {cash:.2f}"
+    return Decision("order", "buy" if delta > 0 else "sell", abs(delta), why, **diag)
+
+
 def fatal(msg):
     print(f"FATAL: {msg}", file=sys.stderr)
     sys.exit(1)
@@ -145,6 +242,12 @@ def latest_signal():
     return json.loads(lines[-1])
 
 
+def open_orders(sym):
+    """Open (resting) orders for `sym` on the account — the idempotency check."""
+    q = urllib.parse.urlencode({"status": "open", "symbols": sym})
+    return [o for o in api("GET", f"/orders?{q}") or [] if o.get("symbol") == sym]
+
+
 def main():
     dry = "--dry-run" in sys.argv[1:]
     load_env()
@@ -153,6 +256,7 @@ def main():
     alloc = sig["signal_alloc"]
     if alloc not in (0.0, 0.5, 1.0):
         fatal(f"invalid signal_alloc {alloc}")
+    run_at = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
 
     # Kill switch (RUNBOOK "Halt"): a committed HALT file at the repo root stops
     # all ordering, checked before any market/clock gate so a halted run reports
@@ -163,7 +267,7 @@ def main():
         with open(HALT_PATH) as f:
             reason = f.read().strip().splitlines()
         halted = {
-            "run_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+            "run_at_utc": run_at,
             "signal_date": sig["signal_date"],
             "signal_alloc": alloc,
             "action": "HALTED by HALT file — no order",
@@ -172,9 +276,7 @@ def main():
             "dry_run": dry,
         }
         if not dry:
-            os.makedirs(os.path.dirname(TRADE_LOG), exist_ok=True)
-            with open(TRADE_LOG, "a") as f:
-                f.write(json.dumps(halted) + "\n")
+            append_trade(halted)
         print(json.dumps(halted, indent=2))
         return
 
@@ -214,29 +316,13 @@ def main():
         with open(STATE_PATH) as f:
             last_acted = json.load(f).get("signal_alloc")
 
-    target_qty = math.floor(alloc * equity / px)
-    requested_delta = target_qty - cur_qty
-
-    # How many shares of headroom the cash leaves beyond the UNCAPPED order,
-    # priced at the intraday reference. Negative means the order could not have
-    # been paid for in full at this price; near zero means a rise between now and
-    # the close would do the same. Diagnostic — the cap below is what acts on it.
-    buffer_shares = round(cash / px - requested_delta, 2) if requested_delta > 0 else None
-
-    # Cap a buy at what cash can actually pay for. Sells are never capped: they
-    # raise cash. Under-ordering is self-healing (the drift gate re-fires
-    # tomorrow); over-ordering expires partially filled, which is the bug.
-    cash_cap_qty = affordable_qty(cash, px) if requested_delta > 0 else None
-    delta = min(requested_delta, cash_cap_qty) if requested_delta > 0 else requested_delta
-    capped = delta != requested_delta
-
-    # Realized allocation, derived from shares actually HELD — never from what
-    # was ordered. This is what makes a partial fill visible to the gate below.
-    cur_alloc = cur_qty * px / equity
-    drift = abs(cur_alloc - alloc)
+    try:
+        d = decide(alloc, last_acted, equity, cash, cur_qty, px, halted=False)
+    except ValueError as e:
+        fatal(str(e))
 
     decision = {
-        "run_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+        "run_at_utc": run_at,
         "signal_date": sig["signal_date"],
         "signal_alloc": alloc,
         "last_acted_alloc": last_acted,
@@ -244,52 +330,54 @@ def main():
         "cash": cash,
         "ref_px": px,
         "current_qty": cur_qty,
-        "target_qty": target_qty,
-        "requested_delta": requested_delta,
-        "cash_cap_qty": cash_cap_qty,
-        "capped_by_cash": capped,
-        "buffer_shares": buffer_shares,
-        "current_alloc": round(cur_alloc, 6),
-        "drift": round(drift, 6),
+        "target_qty": d.target_qty,
+        "requested_delta": d.requested_delta,
+        "cash_cap_qty": d.cash_cap_qty,
+        "capped_by_cash": d.capped_by_cash,
+        "buffer_shares": d.buffer_shares,
+        "current_alloc": d.current_alloc,
+        "drift": d.drift,
         "drift_band": DRIFT_BAND,
         "action": None,
         "order_id": None,
         "dry_run": dry,
     }
 
-    if last_acted == alloc and drift <= DRIFT_BAND:
-        decision["action"] = (
-            f"hold (signal unchanged; drift {drift:.2%} within band {DRIFT_BAND:.0%})"
-        )
-    elif delta == 0:
-        decision["action"] = (
-            f"hold (buy {requested_delta} unaffordable: cash {cash:.2f} at {px} "
-            f"pays for 0 shares)" if capped else "hold (already at target)"
-        )
+    if d.action == "hold":
+        decision["action"] = f"hold ({d.reason})"
     else:
-        why = "signal change" if last_acted != alloc else f"drift {drift:.2%}"
-        if capped:
-            why += f"; buy capped {requested_delta}->{delta} by cash {cash:.2f}"
-        decision["order_reason"] = why
-        side = "buy" if delta > 0 else "sell"
-        order_body = {"symbol": SYM, "qty": str(abs(delta)), "side": side,
-                      "type": "market", "time_in_force": "cls"}
-        if dry:
-            decision["action"] = f"would submit MOC {side} {abs(delta)} {SYM} ({why})"
+        # Idempotency: a resting MOC order for the symbol means this day's
+        # decision has already been sent (re-run, retry, operator session).
+        # Submitting again would double the order; hold instead and say why.
+        pending = open_orders(SYM)
+        if pending:
+            ids = ", ".join(o.get("id", "?") for o in pending)
+            decision["action"] = f"hold (open MOC order {ids} pending)"
+            decision["order_reason"] = d.reason
         else:
-            order = api("POST", "/orders", order_body)
-            decision["action"] = f"submitted MOC {side} {abs(delta)} {SYM} ({why})"
-            decision["order_id"] = order["id"]
+            decision["order_reason"] = d.reason
+            order_body = {"symbol": SYM, "qty": str(d.qty), "side": d.side,
+                          "type": "market", "time_in_force": "cls"}
+            if dry:
+                decision["action"] = f"would submit MOC {d.side} {d.qty} {SYM} ({d.reason})"
+            else:
+                order = api("POST", "/orders", order_body)
+                decision["action"] = f"submitted MOC {d.side} {d.qty} {SYM} ({d.reason})"
+                decision["order_id"] = order["id"]
 
     if not dry:
         with open(STATE_PATH, "w") as f:
             json.dump({"signal_alloc": alloc, "signal_date": sig["signal_date"],
-                       "updated_utc": decision["run_at_utc"]}, f, indent=2)
-        os.makedirs(os.path.dirname(TRADE_LOG), exist_ok=True)
-        with open(TRADE_LOG, "a") as f:
-            f.write(json.dumps(decision) + "\n")
+                       "updated_utc": run_at}, f, indent=2)
+        append_trade(decision)
 
     print(json.dumps(decision, indent=2))
+
+
+def append_trade(record):
+    os.makedirs(os.path.dirname(TRADE_LOG), exist_ok=True)
+    with open(TRADE_LOG, "a") as f:
+        f.write(json.dumps(record) + "\n")
 
 
 if __name__ == "__main__":

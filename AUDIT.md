@@ -100,7 +100,8 @@ top-up, which is what the cap now trims.
 `action` is one of: `submitted MOC <side> <qty> QLD (<reason>)` · `would
 submit …` (dry-run) · `hold (signal unchanged; drift …% within band …)` ·
 `hold (already at target)` · `hold (buy N unaffordable: cash … pays for 0
-shares)` · `HALTED by HALT file — no order` (adds `halt_reason`).
+shares)` · `hold (open MOC order <id> pending)` (idempotency, §3 step 3) ·
+`HALTED by HALT file — no order` (adds `halt_reason`).
 
 `equity` on every line is also the daily equity series the weekly rollup and
 all forward-test comparisons read.
@@ -175,6 +176,18 @@ For any day D, without trusting us:
    ordering run, say so in `order_reason`. (`capped_by_cash` describes the
    sizing, not the action, so it can also read true on a hold — a
    rounding-sized buy the drift band suppressed anyway.)
+
+   *Idempotency.* Before any `POST /orders`, `execute.py` lists the open
+   orders for QLD; if one is resting, the run records
+   `hold (open MOC order <id> pending)` with the would-be `order_reason` and
+   sends nothing. So for any day, **at most one** order may exist server-side
+   per decision, and a second trade-log line for the same day must be a hold
+   that names the first line's order. Two orders on one day is a break of
+   the claim. The rule itself (`decide()` in `engine/execute.py`) is a pure
+   function of the logged inputs — `signal_alloc`, `last_acted_alloc`,
+   `equity`, `cash`, `current_qty`, `ref_px` — so an auditor can replay any
+   line: `tests/test_execute_decide.py` does exactly that for the 2026-08-11
+   and 2026-08-14 records.
 4. **Match against Alpaca.** `bash scripts/alpaca.sh orders all` (or the
    dashboard) — the `order_id` in the trade log must exist server-side, with
    the same symbol, side, qty, `time_in_force=cls`, and a `submitted_at`
