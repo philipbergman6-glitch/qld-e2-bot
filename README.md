@@ -2,6 +2,10 @@
 
 [![ci](https://github.com/philipbergman6-glitch/qld-e2-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/philipbergman6-glitch/qld-e2-bot/actions/workflows/ci.yml)
 
+**Live dashboard:** <https://philipbergman6-glitch.github.io/qld-e2-bot/dashboard/>
+— every number on it is derived from the committed `log/*.jsonl` by a
+deterministic parser (`scripts/build_dashboard_data.py`), no API calls.
+
 Autonomous paper-trading bot for the frozen **E2 QLD rule** ("graded
 vol-confirmed re-entry"). Deterministic Python computes the signal; Claude
 glue only schedules, executes, and reports. Alpaca paper account only.
