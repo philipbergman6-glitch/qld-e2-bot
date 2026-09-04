@@ -1,5 +1,7 @@
 # qld-e2-bot
 
+[![ci](https://github.com/philipbergman6-glitch/qld-e2-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/philipbergman6-glitch/qld-e2-bot/actions/workflows/ci.yml)
+
 Autonomous paper-trading bot for the frozen **E2 QLD rule** ("graded
 vol-confirmed re-entry"). Deterministic Python computes the signal; Claude
 glue only schedules, executes, and reports. Alpaca paper account only.
@@ -104,5 +106,10 @@ the run died before its alert step.
 
 ## Setup
 
-- `cp env.template .env` and fill Alpaca paper keys (never committed).
-- Requires python3 with pandas + numpy; stdlib urllib only for HTTP.
+- Python ≥ 3.9 (the engine uses stdlib `zoneinfo`); tested on 3.11–3.14.
+- `pip install -r requirements.txt` (pandas + numpy, a tested range —
+  see the file header; `requirements.lock` is the operator's exact set).
+  HTTP is stdlib `urllib` only.
+- `cp env.template .env` and fill Alpaca **paper** keys (never committed).
+- `python3 -m unittest discover -s tests` — offline, no keys; includes the
+  frozen-rule check against `reference/e2_reference_signals.csv`.

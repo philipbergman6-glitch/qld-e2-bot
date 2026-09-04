@@ -153,6 +153,18 @@ For any day D, without trusting us:
    inputs ⇒ the rule must produce the logged `signal_alloc`. The logged
    `px`/`sma200`/`sma20`/`vol`/`vol_hi_p90`/`volmax60` make the branch taken
    checkable on paper without re-running anything.
+
+   *Environment for that re-run:* `pip install -r requirements.txt` — a
+   tested range, not a freeze — or `requirements.lock` for the operator's
+   exact set. The range is wide because it was measured to be safe: the rule
+   produces bit-identical output under pandas 1.5.3 / 2.2.3 / 3.0.5 on Python
+   3.11 / 3.13 / 3.14 (0 mismatches over 4,786 reference days in each). You
+   do not have to take that on trust — `python3 -m unittest discover -s
+   tests` re-derives the frozen rule against
+   `reference/e2_reference_signals.csv` offline, with no keys and no network,
+   and `.github/workflows/ci.yml` runs it at both ends of the range on every
+   push. That check is what makes "the frozen E2 rule" a testable claim
+   rather than a description.
 3. **Check the order followed the decision.** `target_qty` must equal
    `floor(signal_alloc × equity / ref_px)` and `requested_delta` must equal
    `target_qty − current_qty` (execution spec rule 2). An order must exist only
@@ -187,6 +199,15 @@ Stated so the argument is not oversold:
   the series it recorded, from a named query.
 - **Paper only.** No real capital, so fills are Alpaca's simulation, not
   market reality.
+- **The environment each historical signal ran under is not recorded.**
+  `bars_sha256` pins the inputs; nothing in a signal record says which pandas
+  consumed them, and the cloud routine's container is not the operator's
+  machine. Step 2 above is therefore reproducible *in the tested range* rather
+  than reconstructible exactly — a re-run that disagreed could not yet be
+  attributed to "the engine changed" versus "the library changed" from the
+  record alone. Mitigated for now by the CI matrix (a library change that moved
+  the rule would fail a build), and closed properly when version stamping lands
+  in the signal record (not yet shipped).
 - **Bars are not archived**, only hashed. If Alpaca restates history
   (adjustment changes), the old hash stops reproducing — that is a *feature*
   (it flags the restatement) but it means step 2 can require a same-vintage

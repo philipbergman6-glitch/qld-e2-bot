@@ -174,11 +174,20 @@ no back-fill of what was missed during the halt.
 
 - **The E2 rule is frozen.** Changing it requires a new entry in the
   decision record (private research notes), not an edit here.
-- Engine changes: separate commit, never inside a daily commit, run the unit
-  tests (`python3 -m unittest discover -s tests`, no network or credentials
-  needed) plus `python3 engine/execute.py --dry-run`, and re-run the
-  reference check against `reference/e2_reference_signals.csv` before the
-  next trading day.
+- Engine changes: separate commit, never inside a daily commit, run the tests
+  (`python3 -m unittest discover -s tests`, no network or credentials needed)
+  plus `python3 engine/execute.py --dry-run`, before the next trading day.
+  The reference check against `reference/e2_reference_signals.csv` is **not
+  a manual step** — it is `tests/test_signal_reference.py`, inside that same
+  command, and CI re-runs it on every push. It asserts exact equality on
+  4,786 days, so a rule change fails loudly. Two caveats: it does not
+  constrain `VOLMAX_WIN`, and it covers the rule only, not `fetch_bars()` or
+  the session/staleness guards.
+- Dependencies: `pip install -r requirements.txt` (tested range;
+  `requirements.lock` holds the operator's exact set). Never `pip install
+  pandas numpy` — see `routines/README.md` prerequisite 4. Changing the range
+  means changing the CI matrix ends in `.github/workflows/ci.yml` too, so the
+  range stays a tested claim.
 - Routine prompt changes: edit `routines/*.md` **and** re-paste into the cloud
   routine — the cloud copy is what actually runs; the repo copy is
   documentation.

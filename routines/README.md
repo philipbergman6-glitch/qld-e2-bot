@@ -24,10 +24,17 @@ and `20 16 * * 5` instead.
 3. Set env vars on the routine (NOT in a committed .env file):
    `ALPACA_API_KEY`, `ALPACA_SECRET_KEY`, `ALPACA_ENDPOINT`,
    `ALPACA_DATA_ENDPOINT`, `RESEND_API_KEY`, `EMAIL_TO`, `EMAIL_FROM`.
-   Values: `~/Documents/Coding_Projects/qld-e2-bot/.env` on the Mac
-   (paper keys only; no Perplexity — this bot has no LLM in the signal path).
+   Values: the operator's local `.env` (paper keys only; this bot has no
+   LLM in the signal path).
 4. Environment setup script (the engine needs these; stdlib covers the rest):
-   `pip install pandas numpy`
+   `pip install -r requirements.txt`
+   Not `pip install pandas numpy` — unpinned resolution is not safe. On Python
+   3.14 it produces pandas 2.2.3 + numpy 2.5.2, a pair that imports cleanly and
+   then segfaults inside the engine's computation (2026-08-12).
+   `requirements.txt` declares a tested range; CI proves the rule is unchanged
+   at both of its ends. **This lives in the cloud routine's setup script, so
+   changing the repo file does nothing until it is re-pasted into the routine
+   UI** — same as the routine prompts themselves.
 
 ## Failure model
 
