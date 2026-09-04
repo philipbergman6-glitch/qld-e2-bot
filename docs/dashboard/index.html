@@ -496,7 +496,7 @@ function kpi(label, value, sub, color) {
   $("provPanel").innerHTML = `<div class="prov">
     <span class="k">Input SHA-256</span><span class="v hash">${shaSig ? shaSig.sha : "—"}</span>
     <span class="k">Series</span><span class="v">${shaSig && shaSig.bars ? shaSig.bars.toLocaleString() + " daily bars · " : ""}Alpaca SIP, adjustment=all</span>
-    <span class="k">Witness</span><span class="v">Alpaca paper PA3KZ09KPX46 — server-side orders &amp; fills</span>
+    <span class="k">Witness</span><span class="v">Alpaca paper account (id redacted) — server-side orders &amp; fills</span>
     <span class="k">Reproduce</span><span class="v"><code>python3 scripts/build_dashboard_data.py --check</code></span>
     <span class="k">Reconcile</span><span class="v">AUDIT.md §3</span>
   </div>`;
