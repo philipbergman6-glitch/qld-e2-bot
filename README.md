@@ -6,6 +6,11 @@
 — every number on it is derived from the committed `log/*.jsonl` by a
 deterministic parser (`scripts/build_dashboard_data.py`), no API calls.
 
+**Status (as of 2026-09-03):** paper forward test running since 2026-08-05 —
+22 trading days elapsed, 20 with a logged run (2 missed by scheduler
+misfires, both accounted for in `log/ops_log.jsonl`), 6 MOC orders
+submitted. Incident history: [`docs/INCIDENTS.md`](docs/INCIDENTS.md).
+
 Autonomous paper-trading bot for the frozen **E2 QLD rule** ("graded
 vol-confirmed re-entry"). Deterministic Python computes the signal; Claude
 glue only schedules, executes, and reports. Alpaca paper account only.
@@ -108,6 +113,17 @@ Failure behavior: any non-zero script exit → no trade, one FAILURE email,
 stop; the missed day self-heals at the next run (execution spec rule 4).
 Silence is failure — no daily email by ~12:15 ET on a trading day means
 the run died before its alert step.
+
+## Built with
+
+Built with Claude Code as pair-programmer. The LLM has two roles here, both
+deliberately narrow: at build time it wrote code against decisions that were
+made and recorded first; at run time it executes `routines/daily.md` as a
+constrained scheduler — run the scripts, commit the logs, send the email,
+never touch the signal. The engine itself has no LLM in the loop. Every
+design decision (drift gate, cash cap, run-log contract, audit convention)
+is recorded in the commit body that introduced it and in `AUDIT.md`, so
+`git log` reads as the decision record.
 
 ## Setup
 
