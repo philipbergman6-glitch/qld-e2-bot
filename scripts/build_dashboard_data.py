@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regenerate docs/dashboard/data.js from log/*.jsonl.
 
-Deterministic, no LLM, no network, no credentials (e2bot-10 / dashboard Q3:
+Deterministic, no LLM, no network, no credentials (design decision:
 logs-only). HARD-FAILS on any parse mismatch — never publishes partial or
 stale data. `--check` regenerates and exits non-zero if the result differs
 from the committed docs/dashboard/data.js.

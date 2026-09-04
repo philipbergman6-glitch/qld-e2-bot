@@ -26,7 +26,8 @@ bash scripts/alpaca.sh positions
 
 STEP 3 — Compute (from logs + account, no judgment calls):
 - Week P&L ($ and %) = equity now vs first equity recorded this week
-- Cumulative P&L since go-live anchor (see README go-live record)
+- Cumulative P&L since the go-live anchor (2026-08-05: the first
+  log/trade_log.jsonl record carrying `equity`; AUDIT.md)
 - QLD buy-and-hold comparison for the same week:
   bash scripts/alpaca.sh bar QLD  (and this week's closes from
   log/signal_log.jsonl px fields) — week % change of QLD itself

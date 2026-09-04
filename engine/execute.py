@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """E2 QLD executor — turns today's signal into (at most) one MOC order.
 
-Implements the execution spec (e2bot-03, 2026-08-02) verbatim:
-  1. Market-on-close order placed on day N+1, before the ~15:50 ET MOC cutoff.
+Implements the execution spec (decided 2026-08-02) verbatim:
+  1. Market-on-close order placed on day N+1, before MOC_CUTOFF (15:45 ET —
+     five minutes inside Alpaca's 15:50 ET cutoff).
   2. Whole shares, round down; target dollars = signal_alloc * account equity.
   3. Trade when the signal differs from the last acted-on signal, OR when the
      realized allocation (from shares actually HELD) has drifted more than
@@ -44,7 +45,8 @@ MOC_CUTOFF = dt.time(15, 45)  # ET; 5 min safety before Alpaca's 15:50 cutoff
 ET = ZoneInfo("America/New_York")
 
 # Rebalance when the REALIZED allocation deviates from the signal by more than
-# this fraction of equity, even if the signal itself has not changed (e2bot-11).
+# this fraction of equity, even if the signal itself has not changed
+# (decided 2026-08-10).
 #
 # Why this exists: state records the allocation *submitted*, not the one
 # *filled*. Both live MOC orders to date expired partially filled (109/1081 on
@@ -62,7 +64,7 @@ ET = ZoneInfo("America/New_York")
 # noise (1 share ~ 0.09% of equity at current prices).
 DRIFT_BAND = 0.01
 
-# Fraction of cash held back when sizing a buy (e2bot-14, decided 2026-08-11).
+# Fraction of cash held back when sizing a buy (decided 2026-08-11).
 #
 # Why this exists: target_qty is sized off EQUITY, but QLD is non-marginable
 # (margin_requirement_long 100, asset_marginable false), so a buy is paid from
@@ -76,10 +78,10 @@ DRIFT_BAND = 0.01
 # not the whole order, so it is small by construction. 0.5% of cash at alloc 1.0
 # is ~0.09 shares of slack per 188 ordered — enough to absorb a rounding cent
 # and a normal close-vs-reference tick, while costing at most one share of
-# under-fill. Under-filling by one share is self-healing: the e2bot-11 drift gate
+# under-fill. Under-filling by one share is self-healing: the drift gate
 # sees the realized shortfall the next day. Over-ordering is not — an
 # unaffordable MOC order expires partially filled, which is exactly the failure
-# e2bot-13/14 traced.
+# traced on 2026-08-11 (docs/INCIDENTS.md).
 CASH_BUFFER = 0.005
 
 
@@ -99,7 +101,7 @@ def fatal(msg):
 
 
 def load_env():
-    # Missing .env allowed — cloud routines inject process env vars (e2bot-06);
+    # Missing .env allowed — cloud routines inject process env vars;
     # the key check below still hard-fails if keys arrive from neither source.
     path = os.path.join(ROOT, ".env")
     if not os.path.exists(path):
@@ -199,7 +201,7 @@ def main():
     # QLD is non-marginable (margin_requirement_long 100), so cash — not equity,
     # not buying_power — is what a buy is actually paid from. The TARGET is still
     # sized off equity (exec spec rule 2, unchanged); cash only caps the ORDER
-    # that walks toward it (e2bot-14, decided 2026-08-11).
+    # that walks toward it (decided 2026-08-11).
     cash = float(account["cash"])
 
     pos = api("GET", f"/positions/{SYM}")

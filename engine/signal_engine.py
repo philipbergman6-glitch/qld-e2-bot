@@ -59,7 +59,7 @@ def load_env():
     """Load repo-root .env into os.environ (no override of existing vars).
 
     Missing file is allowed — cloud routines inject keys as process env vars
-    (e2bot-06); the ALPACA_API_KEY/SECRET_KEY check below still hard-fails
+    the ALPACA_API_KEY/SECRET_KEY check below still hard-fails
     if keys arrive from neither source.
     """
     path = os.path.join(ROOT, ".env")
@@ -98,7 +98,7 @@ def fetch_bars(end_session):
     Returns (df, query). The fetch is bounded at the last COMPLETED session:
     during market hours Alpaca returns today's in-progress daily bar, and the
     rule may never see a partial close — every term (SMA200/SMA20/vol/vol
-    percentile) is defined on completed closes only (e2bot-09, 2026-08-04).
+    percentile) is defined on completed closes only (decided 2026-08-04).
 
     `query` is the exact (key-free) source query the bars came from; it is
     logged alongside a hash of the bars so a third party can re-fetch and

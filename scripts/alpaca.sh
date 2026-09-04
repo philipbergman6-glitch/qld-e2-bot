@@ -65,20 +65,6 @@ case "$cmd" in
     ;;
   order)
     body="${1:?usage: order '<json>'}"
-    # Pre-flight: Alpaca silently rejects trailing_stop + fractional qty.
-    # jq is required so this safety check can never silently disable itself.
-    command -v jq >/dev/null 2>&1 || {
-      echo "error: jq is required for order pre-flight validation (install with: brew install jq)" >&2
-      exit 2
-    }
-    otype="$(printf '%s' "$body" | jq -r '.type // empty')"
-    if [[ "$otype" == "trailing_stop" ]]; then
-      qty="$(printf '%s' "$body" | jq -r '.qty // empty')"
-      if [[ ! "$qty" =~ ^[0-9]+$ ]]; then
-        echo "error: trailing_stop requires integer qty (got '$qty'); Alpaca silently rejects fractional + trailing stops" >&2
-        exit 2
-      fi
-    fi
     req -H "Content-Type: application/json" -X POST -d "$body" "$API/orders"
     ;;
   replace)

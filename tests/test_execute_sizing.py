@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit tests for the cash affordability cap on buys (e2bot-14 step 2).
+"""Unit tests for the cash affordability cap on buys (decided 2026-08-11).
 
 Pure arithmetic only — no network, no logs, no state. Run:
     python3 -m unittest discover -s tests -v

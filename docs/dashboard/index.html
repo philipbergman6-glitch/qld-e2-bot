@@ -275,7 +275,7 @@ const shortD = iso => { const [y,m,d] = iso.split("-"); return `${m}/${d}`; };
 const lastSig = SIG[SIG.length - 1];
 const lastTrd = TRD[TRD.length - 1];
 
-/* SIG is a log of RUNS, not of days (AUDIT.md, e2bot-15): re-runs — recovery
+/* SIG is a log of RUNS, not of days (AUDIT.md §1): re-runs — recovery
    runs, determinism checks, operator sessions — append another record for the
    same signal_date, and the LAST record for a signal_date is authoritative.
    Anything that charts or counts across days must read SIG_DAYS, not SIG;

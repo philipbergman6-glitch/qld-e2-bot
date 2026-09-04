@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Notification wrapper. Sends an email via the Resend API.
 # Usage: bash scripts/email.sh "<message>"
+# The first line of the message is the subject.
 # If credentials are unset, appends to a local fallback file.
 set -euo pipefail
 
@@ -27,6 +28,7 @@ if [[ -z "${msg// /}" ]]; then
 fi
 
 stamp="$(date '+%Y-%m-%d %H:%M %Z')"
+subject="${msg%%$'\n'*}"
 
 if [[ -z "${RESEND_API_KEY:-}" || -z "${EMAIL_TO:-}" || -z "${EMAIL_FROM:-}" ]]; then
   printf "\n---\n## %s (fallback — email not configured)\n%s\n" "$stamp" "$msg" >> "$FALLBACK"
@@ -43,7 +45,7 @@ print(json.dumps({
     'subject': sys.argv[3],
     'text': sys.argv[4],
 }))
-" "$EMAIL_FROM" "$EMAIL_TO" "Trading Brief — $stamp" "$msg")"
+" "$EMAIL_FROM" "$EMAIL_TO" "$subject" "$msg")"
 
 curl -fsS -X POST https://api.resend.com/emails \
   -H "Authorization: Bearer $RESEND_API_KEY" \

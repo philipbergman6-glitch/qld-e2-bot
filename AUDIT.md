@@ -49,7 +49,7 @@ Written by `engine/signal_engine.py`, one record per run:
 (they are ~2,700 rows/day of re-fetchable vendor data); the hash plus
 `source_query` lets anyone re-fetch and prove they hold the same series.
 
-**Contract: this is a log of runs, not of days** (e2bot-15, 2026-08-11).
+**Contract: this is a log of runs, not of days** (decided 2026-08-11).
 Re-running `signal_engine.py` on the same day appends another record for the
 same `signal_date`, and that is intended: recovery runs, determinism checks and
 operator sessions are all legitimate, and the duplication is what *proves*
@@ -88,10 +88,10 @@ Written by `engine/execute.py`, one record per run (including no-trade days):
 `cash_cap_qty`, `capped_by_cash`, `buffer_shares`, `current_alloc`, `drift`,
 `drift_band`, `action`, `order_id`, `dry_run`, and `order_reason` on ordering
 runs. Records written before 2026-08-11 carry only the first-listed subset;
-the fields arrived with e2bot-11 (drift) and e2bot-14 (cash).
+the drift fields arrived 2026-08-10 and the cash fields 2026-08-11.
 
 The cash fields exist because QLD is non-marginable, so a buy is paid from
-`cash` while `target_qty` is sized off `equity` (e2bot-14): `requested_delta`
+`cash` while `target_qty` is sized off `equity`: `requested_delta`
 is the order the target implies, `cash_cap_qty` what cash can pay for, and
 `capped_by_cash` says which one was sent. `buffer_shares` is the headroom the
 uncapped order would have had, in shares — it was 0.44 on the 2026-08-11
@@ -169,8 +169,8 @@ For any day D, without trusting us:
    `floor(signal_alloc × equity / ref_px)` and `requested_delta` must equal
    `target_qty − current_qty` (execution spec rule 2). An order must exist only
    when `signal_alloc ≠ last_acted_alloc` **or** `drift > drift_band` (rule 3,
-   as amended by e2bot-11). Its qty is `requested_delta` capped on buys at
-   `cash_cap_qty = floor(cash × 0.995 / ref_px)` (e2bot-14) — a sell is never
+   as amended 2026-08-10). Its qty is `requested_delta` capped on buys at
+   `cash_cap_qty = floor(cash × 0.995 / ref_px)` — a sell is never
    capped, and a cap that bites must show `capped_by_cash: true` and, on an
    ordering run, say so in `order_reason`. (`capped_by_cash` describes the
    sizing, not the action, so it can also read true on a hold — a

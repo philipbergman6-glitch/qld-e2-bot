@@ -54,10 +54,11 @@ Signal from day-N close, QLD price/returns only:
 2. Whole shares, round down; target dollars = alloc × account equity. A buy is
    additionally capped at what **cash** can pay for, `floor(cash × 0.995 /
    ref_px)` — QLD is non-marginable, so equity is the target but cash is the
-   funding (amended by e2bot-14, 2026-08-11; sells are never capped).
+   funding (amended 2026-08-11 after three consecutive 0-fills; sells are
+   never capped).
 3. Trade on signal change **or** when realized allocation has drifted more than
-   1% from the signal (amended by e2bot-11, 2026-08-10; the original spec never
-   rebalanced for drift, which made partial fills structurally invisible).
+   1% from the signal (amended 2026-08-10; the original spec never rebalanced
+   for drift, which made partial fills structurally invisible).
 4. Missed days self-heal: next run trades toward that day's fresh signal;
    never back-fill.
 5. Paper account reset to $100,000 before go-live.
@@ -72,7 +73,7 @@ history < 273 bars (SMA200 + expanding-252 vol percentile warmup) or if the
 latest bar ≠ the last completed session (Alpaca calendar).
 
 Note: Alpaca v2 historical coverage may start later than QLD inception
-(2006). The verify step (e2bot-05) measures the actual overlap; warmup only
+(2006). The reference test measures the actual overlap; warmup only
 needs ~273 bars, so signals are still valid from ~13 months after the feed's
 first bar.
 
@@ -87,11 +88,11 @@ git add log/ && git commit          # audit trail (convention: AUDIT.md)
 Both scripts hard-fail (non-zero exit) on any invalid/stale input — a failed
 run trades nothing.
 
-## Schedule (decided 2026-08-02, e2bot-06)
+## Schedule (decided 2026-08-02)
 
-Runtime: **Claude Code cloud routines** on this repo (same pattern as the
-old BOT2.0), prompts in `routines/` — paste verbatim, env vars set on the
-routine, never in a committed file.
+Runtime: **Claude Code cloud routines** on this repo, prompts in
+`routines/` — paste verbatim, env vars set on the routine, never in a
+committed file.
 
 | Routine      | Time (ET)     | Prompt               | Does                        |
 |--------------|---------------|----------------------|-----------------------------|
