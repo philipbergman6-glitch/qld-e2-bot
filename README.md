@@ -7,9 +7,9 @@
 deterministic parser (`scripts/build_dashboard_data.py`), no API calls.
 
 **Status (as of 2026-09-03):** paper forward test running since 2026-08-05 —
-22 trading days elapsed, 20 with a logged run (2 missed by scheduler
-misfires, both accounted for in `log/ops_log.jsonl`), 6 MOC orders
-submitted. Incident history: [`docs/INCIDENTS.md`](docs/INCIDENTS.md).
+22 trading days elapsed, 20 with a logged run (one lost to a cron
+misfire, one to an unexplained non-start — both recorded in
+`log/ops_log.jsonl`), 6 MOC orders submitted. Incident history: [`docs/INCIDENTS.md`](docs/INCIDENTS.md).
 
 Autonomous paper-trading bot for the frozen **E2 QLD rule** ("graded
 vol-confirmed re-entry"). Deterministic Python computes the signal; Claude
