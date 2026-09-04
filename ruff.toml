@@ -1,0 +1,10 @@
+# Lint config. Run: ruff check .   (CI runs it too)
+line-length = 100
+target-version = "py39"
+
+[lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[lint.isort]
+# engine/_common.py is imported by sibling scripts run as `python3 engine/x.py`.
+known-first-party = ["_common", "execute", "signal_engine"]

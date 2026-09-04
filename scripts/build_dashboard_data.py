@@ -22,10 +22,14 @@ Output is deterministic: "as of" derives from the newest log record, never
 from the wall clock, so --check reproduces byte-identically on any day.
 """
 
+from __future__ import annotations
+
 import json
 import sys
+from collections.abc import Iterator
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from typing import Any, NoReturn
 from zoneinfo import ZoneInfo
 
 REPO = Path(__file__).resolve().parent.parent
@@ -40,22 +44,22 @@ class ParseError(RuntimeError):
     pass
 
 
-def fail(msg):
+def fail(msg: str) -> NoReturn:
     raise ParseError(msg)
 
 
-def need(rec, key, where):
+def need(rec: dict[str, Any], key: str, where: str) -> Any:
     if key not in rec:
         fail(f"{where}: missing required field {key!r}: {rec}")
     return rec[key]
 
 
-def et_date(iso_utc):
+def et_date(iso_utc: str) -> str:
     """UTC ISO timestamp -> ET calendar date string."""
     return datetime.fromisoformat(iso_utc).astimezone(ET).date().isoformat()
 
 
-def read_jsonl(path):
+def read_jsonl(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         fail(f"{path} missing")
     recs = []
@@ -75,7 +79,7 @@ def read_jsonl(path):
 # Live logs
 # --------------------------------------------------------------------------
 
-def parse_signals():
+def parse_signals() -> list[dict[str, Any]]:
     sigs = []
     for r in read_jsonl(SIGNAL_LOG):
         s = {
@@ -100,7 +104,7 @@ def parse_signals():
     return sigs
 
 
-def parse_trades():
+def parse_trades() -> list[dict[str, Any]]:
     trs = []
     for r in read_jsonl(TRADE_LOG):
         t = {
@@ -127,7 +131,7 @@ def parse_trades():
     return trs
 
 
-def parse_ops():
+def parse_ops() -> list[dict[str, Any]]:
     KNOWN = {"market-closed", "failure", "halt", "resume", "manual", "note"}
     ops = []
     for r in read_jsonl(OPS_LOG):
@@ -144,7 +148,7 @@ def parse_ops():
     return ops
 
 
-def derive_anchor(trades, ops):
+def derive_anchor(trades: list[dict[str, Any]], ops: list[dict[str, Any]]) -> dict[str, Any] | None:
     """First trade record carrying equity = go-live anchor (Q6 option A),
     cross-checked against the ops resume event."""
     live = [t for t in trades if "equity" in t and not t["dry"]]
@@ -158,7 +162,7 @@ def derive_anchor(trades, ops):
     return a
 
 
-def weekdays(d0, d1):
+def weekdays(d0: str, d1: str) -> Iterator[str]:
     d = date.fromisoformat(d0)
     end = date.fromisoformat(d1)
     while d <= end:
@@ -167,7 +171,9 @@ def weekdays(d0, d1):
         d += timedelta(days=1)
 
 
-def coverage(sigs, trades, ops):
+def coverage(
+    sigs: list[dict[str, Any]], trades: list[dict[str, Any]], ops: list[dict[str, Any]]
+) -> list[dict[str, str]]:
     """AUDIT.md §1 rendered: every weekday from the first record to the last
     is covered by a signal/trade record (log), an ops record (ops), or is a
     GAP."""
@@ -192,7 +198,7 @@ def coverage(sigs, trades, ops):
 # Emit
 # --------------------------------------------------------------------------
 
-def jnum(v, nd=4):
+def jnum(v: Any, nd: int = 4) -> str:
     if v is None:
         return "null"
     if isinstance(v, bool):
@@ -203,11 +209,17 @@ def jnum(v, nd=4):
     return s if s not in ("", "-0") else "0"
 
 
-def jstr(s):
+def jstr(s: str) -> str:
     return json.dumps(s, ensure_ascii=False)
 
 
-def emit(sigs, trades, ops, anchor, cov):
+def emit(
+    sigs: list[dict[str, Any]],
+    trades: list[dict[str, Any]],
+    ops: list[dict[str, Any]],
+    anchor: dict[str, Any] | None,
+    cov: list[dict[str, str]],
+) -> str:
     lines = []
     add = lines.append
     as_of = max([s["run"] for s in sigs] + [t["run_et"] for t in trades]
@@ -283,7 +295,7 @@ def emit(sigs, trades, ops, anchor, cov):
     return "\n".join(lines) + "\n"
 
 
-def main():
+def main() -> None:
     sigs = parse_signals()
     trades = parse_trades()
     ops = parse_ops()

@@ -11,6 +11,9 @@
 # semantics, `tests/test_signal_reference.py` fails here before it can move a
 # live signal.
 #
+# `ruff check .` (config in ruff.toml) runs on the current job only; lint
+# rules do not depend on the pandas version.
+#
 # The dashboard check proves docs/dashboard/data.js is exactly what
 # scripts/build_dashboard_data.py derives from log/*.jsonl — a hand-edited or
 # stale dashboard fails the build.
@@ -45,7 +48,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt ruff
       - run: python -c "import pandas, numpy, sys; print(sys.version); print(pandas.__version__, numpy.__version__)"
+      - run: ruff check .
       - run: python -m unittest discover -s tests -v
       - run: python scripts/build_dashboard_data.py --check

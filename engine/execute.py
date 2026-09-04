@@ -35,16 +35,17 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-from dataclasses import dataclass
 import math
 import os
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from zoneinfo import ZoneInfo
+from dataclasses import dataclass
+from typing import Any
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from _common import ET, ROOT, fatal, load_env
+
 SIGNAL_LOG = os.path.join(ROOT, "log", "signal_log.jsonl")
 TRADE_LOG = os.path.join(ROOT, "log", "trade_log.jsonl")
 STATE_PATH = os.path.join(ROOT, "log", "last_acted_signal.json")
@@ -52,7 +53,6 @@ HALT_PATH = os.path.join(ROOT, "HALT")  # kill switch: present => never order
 
 SYM = "QLD"
 MOC_CUTOFF = dt.time(15, 45)  # ET; 5 min safety before Alpaca's 15:50 cutoff
-ET = ZoneInfo("America/New_York")
 
 # Rebalance when the REALIZED allocation deviates from the signal by more than
 # this fraction of equity, even if the signal itself has not changed
@@ -95,7 +95,7 @@ DRIFT_BAND = 0.01
 CASH_BUFFER = 0.005
 
 
-def affordable_qty(cash, px, eps=CASH_BUFFER):
+def affordable_qty(cash: float, px: float, eps: float = CASH_BUFFER) -> int:
     """Whole shares payable from `cash` at `px`, keeping an `eps` fraction back.
 
     Never negative: a cash deficit affords zero shares, it does not imply a sell.
@@ -128,7 +128,15 @@ class Decision:
     drift: float
 
 
-def decide(signal_alloc, last_acted_alloc, equity, cash, position_qty, ref_px, halted):
+def decide(
+    signal_alloc: float,
+    last_acted_alloc: float | None,
+    equity: float,
+    cash: float,
+    position_qty: int,
+    ref_px: float,
+    halted: bool,
+) -> Decision:
     """Execution spec rules 2–3 as a pure function. No I/O, no clock, no state.
 
     signal_alloc     today's signal (0.0 / 0.5 / 1.0)
@@ -192,27 +200,7 @@ def decide(signal_alloc, last_acted_alloc, equity, cash, position_qty, ref_px, h
     return Decision("order", "buy" if delta > 0 else "sell", abs(delta), why, **diag)
 
 
-def fatal(msg):
-    print(f"FATAL: {msg}", file=sys.stderr)
-    sys.exit(1)
-
-
-def load_env():
-    # Missing .env allowed — cloud routines inject process env vars;
-    # the key check below still hard-fails if keys arrive from neither source.
-    path = os.path.join(ROOT, ".env")
-    if not os.path.exists(path):
-        return
-    with open(path) as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip())
-
-
-def api(method, path, body=None):
+def api(method: str, path: str, body: dict[str, Any] | None = None) -> Any:
     ep = os.environ.get("ALPACA_ENDPOINT", "https://paper-api.alpaca.markets/v2")
     key, sec = os.environ.get("ALPACA_API_KEY"), os.environ.get("ALPACA_SECRET_KEY")
     if not key or not sec:
@@ -232,7 +220,7 @@ def api(method, path, body=None):
         fatal(f"Alpaca API unreachable: {e.reason}")
 
 
-def latest_signal():
+def latest_signal() -> dict[str, Any]:
     if not os.path.exists(SIGNAL_LOG):
         fatal(f"{SIGNAL_LOG} missing — run signal_engine.py first")
     with open(SIGNAL_LOG) as f:
@@ -242,13 +230,13 @@ def latest_signal():
     return json.loads(lines[-1])
 
 
-def open_orders(sym):
+def open_orders(sym: str) -> list[dict[str, Any]]:
     """Open (resting) orders for `sym` on the account — the idempotency check."""
     q = urllib.parse.urlencode({"status": "open", "symbols": sym})
     return [o for o in api("GET", f"/orders?{q}") or [] if o.get("symbol") == sym]
 
 
-def main():
+def main() -> None:
     dry = "--dry-run" in sys.argv[1:]
     load_env()
 
@@ -374,7 +362,7 @@ def main():
     print(json.dumps(decision, indent=2))
 
 
-def append_trade(record):
+def append_trade(record: dict[str, Any]) -> None:
     os.makedirs(os.path.dirname(TRADE_LOG), exist_ok=True)
     with open(TRADE_LOG, "a") as f:
         f.write(json.dumps(record) + "\n")

@@ -29,12 +29,18 @@ independent witness.
 engine/signal_engine.py   fetch QLD daily bars (Alpaca, adjustment=all),
                           compute E2 signal, append to log/signal_log.jsonl
 engine/execute.py         map signal -> at most one MOC order (spec below),
-                          append to log/trade_log.jsonl
+                          append to log/trade_log.jsonl; decide() is the
+                          pure rule, main() is the I/O
+engine/_common.py         shared: repo root, hard-fail, .env loading
+tests/                    offline unit tests incl. the frozen-rule reference check
+scripts/build_dashboard_data.py
+                          log/*.jsonl -> docs/dashboard/data.js (deterministic)
 scripts/alpaca.sh         bash wrapper for ad-hoc Alpaca calls (Claude glue)
 scripts/email.sh          Resend email wrapper (reports)
 scripts/oplog.sh          append a routine-level event to log/ops_log.jsonl
 reference/                backtest reference signals (derived aggregates only)
 log/                      append-only signal + trade + ops logs, committed daily
+docs/INCIDENTS.md         what broke, root cause, fix, agent vs operator
 HALT                      kill switch (absent normally): present => no orders
 ```
 
@@ -134,3 +140,5 @@ is recorded in the commit body that introduced it and in `AUDIT.md`, so
 - `cp env.template .env` and fill Alpaca **paper** keys (never committed).
 - `python3 -m unittest discover -s tests` — offline, no keys; includes the
   frozen-rule check against `reference/e2_reference_signals.csv`.
+- Lint: `ruff check .` (`ruff.toml`: E, F, I, B, UP; line length 100). CI
+  runs both.

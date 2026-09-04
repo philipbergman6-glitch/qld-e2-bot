@@ -25,6 +25,8 @@ Usage: python3 engine/signal_engine.py [--no-log]
 Prints the full signal state as JSON on stdout; appends the same record to
 log/signal_log.jsonl unless --no-log. Exit code 0 only on a valid signal.
 """
+from __future__ import annotations
+
 import datetime as dt
 import hashlib
 import json
@@ -33,12 +35,13 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
-from zoneinfo import ZoneInfo
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from _common import ET, ROOT, fatal, load_env
+
 LOG_PATH = os.path.join(ROOT, "log", "signal_log.jsonl")
 
 SYM = "QLD"
@@ -47,52 +50,27 @@ L_TREND, L_FAST, VOL_WIN, VOLMAX_WIN = 200, 20, 20, 60
 FRAC, XQ = 0.9, 0.90
 MIN_BARS = 273  # 20d vol needs 21 bars; expanding-252 percentile of vol -> 252+21
 
-ET = ZoneInfo("America/New_York")
 
-
-def fatal(msg):
-    print(f"FATAL: {msg}", file=sys.stderr)
-    sys.exit(1)
-
-
-def load_env():
-    """Load repo-root .env into os.environ (no override of existing vars).
-
-    Missing file is allowed — cloud routines inject keys as process env vars
-    the ALPACA_API_KEY/SECRET_KEY check below still hard-fails
-    if keys arrive from neither source.
-    """
-    path = os.path.join(ROOT, ".env")
-    if not os.path.exists(path):
-        return
-    with open(path) as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip())
-
-
-def api_get(url, headers):
+def api_get(url: str, headers: dict[str, str]) -> Any:
     req = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read())
     except urllib.error.HTTPError as e:
-        fatal(f"Alpaca API {e.code} on {url.split('?')[0]}: {e.read().decode(errors='replace')[:300]}")
+        body = e.read().decode(errors="replace")[:300]
+        fatal(f"Alpaca API {e.code} on {url.split('?')[0]}: {body}")
     except urllib.error.URLError as e:
         fatal(f"Alpaca API unreachable: {e.reason}")
 
 
-def alpaca_headers():
+def alpaca_headers() -> dict[str, str]:
     key, sec = os.environ.get("ALPACA_API_KEY"), os.environ.get("ALPACA_SECRET_KEY")
     if not key or not sec:
         fatal("ALPACA_API_KEY / ALPACA_SECRET_KEY not set")
     return {"APCA-API-KEY-ID": key, "APCA-API-SECRET-KEY": sec}
 
 
-def fetch_bars(end_session):
+def fetch_bars(end_session: dt.date) -> tuple[pd.DataFrame, str]:
     """Daily bars for SYM through end_session, adjustment=all, ascending.
 
     Returns (df, query). The fetch is bounded at the last COMPLETED session:
@@ -138,7 +116,7 @@ def fetch_bars(end_session):
     return df, query
 
 
-def bars_digest(df):
+def bars_digest(df: pd.DataFrame) -> str:
     """SHA-256 over the exact (date, close) series the rule consumed.
 
     Canonical form: one `YYYY-MM-DD,<close repr>` line per bar, ascending,
@@ -149,7 +127,7 @@ def bars_digest(df):
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
-def last_completed_session():
+def last_completed_session() -> dt.date:
     """Most recent trading session whose close has passed (ET), via calendar."""
     api = os.environ.get("ALPACA_ENDPOINT", "https://paper-api.alpaca.markets/v2")
     now = dt.datetime.now(ET)
@@ -160,7 +138,9 @@ def last_completed_session():
         fatal("empty trading calendar")
     completed = []
     for day in cal:
-        close_t = dt.datetime.strptime(f"{day['date']} {day['close']}", "%Y-%m-%d %H:%M").replace(tzinfo=ET)
+        close_t = dt.datetime.strptime(
+            f"{day['date']} {day['close']}", "%Y-%m-%d %H:%M"
+        ).replace(tzinfo=ET)
         if close_t <= now:
             completed.append(dt.date.fromisoformat(day["date"]))
     if not completed:
@@ -168,7 +148,7 @@ def last_completed_session():
     return max(completed)
 
 
-def compute_signals(px, ret):
+def compute_signals(px: pd.Series, ret: pd.Series) -> pd.DataFrame:
     """The E2 rule, ported verbatim from the backtest notebook (private). px/ret: pd.Series."""
     sma = px.rolling(L_TREND).mean()
     fsma = px.rolling(L_FAST).mean()
@@ -192,7 +172,7 @@ def compute_signals(px, ret):
     return state
 
 
-def main():
+def main() -> None:
     no_log = "--no-log" in sys.argv[1:]
     load_env()
     # Session first: it bounds the fetch, so the in-progress bar never arrives.
