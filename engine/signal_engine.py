@@ -169,7 +169,7 @@ def last_completed_session():
 
 
 def compute_signals(px, ret):
-    """The E2 rule, verbatim from qld_final_model.py. px/ret: pd.Series."""
+    """The E2 rule, ported verbatim from the backtest notebook (private). px/ret: pd.Series."""
     sma = px.rolling(L_TREND).mean()
     fsma = px.rolling(L_FAST).mean()
     vol = ret.rolling(VOL_WIN).std() * np.sqrt(252)

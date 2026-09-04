@@ -1,7 +1,7 @@
 # RUNBOOK.md — operating the E2 paper bot
 
 For the human operator. The bot runs itself; this is how to check it, read it,
-fix it, and stop it. Decided 2026-08-04 (wayfinder ticket `e2bot-07`).
+fix it, and stop it. Decided 2026-08-04.
 
 Ground rules that override anything below: **the signal comes from
 `engine/*.py`, never from judgment**; **a failed run trades nothing and
@@ -56,10 +56,10 @@ Liveness verdict:
 
 The backtest convention is **signal at close N → MOC order placed N+1 →
 position effective from N+2**. This is part of the spec, not a detail:
-measured on the E10 overlay work (2026-08-09, `QLD-model`
-`wayfinder/assets/e10-tv-stepb-reconciliation.md`), executing one day later
-silently turns a −34% worst-case into −47%. The same shift(3) haircut was
-measured on E9 (Martin 1.331 → 0.983). A late bot *looks* healthy — nothing
+measured in the backtest notebook (private, 2026-08-09) on a related
+overlay rule, executing one day later silently turns a −34% worst-case into
+−47%; the same shift(3) haircut cut a sibling rule's Martin ratio from 1.331
+to 0.983. A late bot *looks* healthy — nothing
 errors — so this must be checked against fills, not logs alone:
 
 ```bash
@@ -119,7 +119,7 @@ The failure email names the script and its stderr. **Do not re-run
 | `ALPACA_* not set` | Fix the routine's env vars in the cloud UI. |
 | push failed | Re-run only the commit+push step from a clone; the decision is what matters. |
 | `commit not on main` | The environment redirected the push to a `claude/*` branch (seen 2026-08-04). Recover it: `git fetch origin 'refs/heads/claude/*:refs/remotes/origin/claude/*'`, then `git merge --ff-only origin/claude/<branch>` on `main` and push. Then fix the routine's branch-push permission — a heartbeat that says "success" while `main` never moved is the trail's worst failure mode. |
-| `invalid allocations` / signal NaN | **Engine-level. Halt (§5) and open a ticket on the map.** |
+| `invalid allocations` / signal NaN | **Engine-level. Halt (§5) and record the incident in `docs/INCIDENTS.md`.** |
 
 Then `bash scripts/oplog.sh failure "<one line: date, script, cause>"` and
 commit `log/`, so the day is accounted for (AUDIT.md §1).
@@ -172,14 +172,13 @@ no back-fill of what was missed during the halt.
 
 ## 6. Changing anything
 
-- **The E2 rule is frozen.** Changing it requires a new decision on the
-  wayfinder map (`MAP-e2-bot.md` in the QLD-model repo), not an edit here.
+- **The E2 rule is frozen.** Changing it requires a new entry in the
+  decision record (private research notes), not an edit here.
 - Engine changes: separate commit, never inside a daily commit, run the unit
   tests (`python3 -m unittest discover -s tests`, no network or credentials
   needed) plus `python3 engine/execute.py --dry-run`, and re-run the
-  reference check (`reference/e2_reference_signals.csv`, method in the
-  QLD-model repo's `assets/e2bot05-verification-report.md`) before the next
-  trading day.
+  reference check against `reference/e2_reference_signals.csv` before the
+  next trading day.
 - Routine prompt changes: edit `routines/*.md` **and** re-paste into the cloud
   routine — the cloud copy is what actually runs; the repo copy is
   documentation.
@@ -188,5 +187,5 @@ no back-fill of what was missed during the halt.
 
 Anything that cannot be explained by the tables above — an unexplained Alpaca
 order, a signal that does not follow from its own logged inputs, a rewritten
-log — is a stop-everything event: halt (§5), do not "fix" the logs, and take
-it to the map as a ticket.
+log — is a stop-everything event: halt (§5), do not "fix" the logs, and
+write it up in `docs/INCIDENTS.md` before deciding anything.

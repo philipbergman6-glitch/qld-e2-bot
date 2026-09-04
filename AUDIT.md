@@ -1,7 +1,8 @@
 # AUDIT.md — audit-trail convention
 
-Decided 2026-08-04 (wayfinder ticket `e2bot-07`, map `MAP-e2-bot.md` in the
-QLD-model repo). Binding on every routine and every agent touching this repo.
+Decided 2026-08-04; the underlying decision lives in the decision record
+(private research notes). Binding on every routine and every agent touching
+this repo.
 
 **Claim this trail is designed to support:** *every order this bot placed was
 the mechanical output of the frozen E2 rule applied to the data the engine
@@ -98,7 +99,7 @@ top-up, which is what the cap now trims.
 
 `action` is one of: `submitted MOC <side> <qty> QLD (<reason>)` · `would
 submit …` (dry-run) · `hold (signal unchanged; drift …% within band …)` ·
-`hold (already at target)` · `hold (buy N unaffordable: cash … funds 0
+`hold (already at target)` · `hold (buy N unaffordable: cash … pays for 0
 shares)` · `HALTED by HALT file — no order` (adds `halt_reason`).
 
 `equity` on every line is also the daily equity series the weekly rollup and
@@ -133,7 +134,7 @@ E2 daily YYYY-MM-DD: alloc=100% <order id abc-123 | no trade | HALTED | FAILURE:
 - Only `log/` (and `HALT`, when halting) changes in a daily commit. A daily
   commit that touches `engine/` is a red flag by construction.
 - Engine, rule, or convention changes are **separate commits**, never mixed
-  into a daily one, and require a decision recorded in the wayfinder map
+  into a daily one, and require a decision recorded in the decision record
   first (`CLAUDE.md` hard rules).
 - Never rewrite history in this repo — no amend, no rebase, no force-push on
   `main`. The trail's value is that it is append-only.
@@ -185,7 +186,7 @@ Stated so the argument is not oversold:
 - **Not a proof the vendor data was right** — only that the engine acted on
   the series it recorded, from a named query.
 - **Paper only.** No real capital, so fills are Alpaca's simulation, not
-  market reality (see the map's Out of scope).
+  market reality.
 - **Bars are not archived**, only hashed. If Alpaca restates history
   (adjustment changes), the old hash stops reproducing — that is a *feature*
   (it flags the restatement) but it means step 2 can require a same-vintage
@@ -201,5 +202,5 @@ affected `signal_date` and what was wrong, and (if it changed the position) a
 
 The repo is the archive: never prune `log/`. Snapshot Alpaca's order history
 to `log/alpaca-orders-<date>.json` before any account reset — a reset wipes
-the server-side witness (this happened to BOT2.0; the snapshot lives in the
-QLD-model repo's `assets/`).
+the server-side witness (this happened to an earlier bot on this account;
+that snapshot is kept in private research notes).

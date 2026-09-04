@@ -12,8 +12,9 @@ override, re-derive, or "sanity-adjust" the signal with your own judgment.
   inputs. Commit the failure note, report it, stop.
 - Never edit `engine/`, `reference/`, or rewrite history in `log/` — logs are
   append-only. Engine changes require a human decision recorded in the
-  QLD-model wayfinder map first.
-- No fund files ever enter this repo.
+  decision record (private research notes) first.
+- Only derived aggregates (rule outputs, rebased indices) enter `reference/`;
+  never raw research inputs.
 - A `HALT` file at the repo root means STOP: `execute.py` places no order
   (exit 0, logged HALTED — not a failure). Never delete it to "unblock" a run.
 - Audit-trail format: `AUDIT.md`. Operator procedures: `RUNBOOK.md`.

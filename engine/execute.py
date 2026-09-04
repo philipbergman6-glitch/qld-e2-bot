@@ -7,7 +7,7 @@ Implements the execution spec (e2bot-03, 2026-08-02) verbatim:
   3. Trade when the signal differs from the last acted-on signal, OR when the
      realized allocation (from shares actually HELD) has drifted more than
      DRIFT_BAND from the signal. Amended from the original "never rebalance for
-     drift" by wayfinder decision e2bot-11 (2026-08-10).
+     drift" by decision of 2026-08-10 (see docs/INCIDENTS.md).
   4. Missed days self-heal: today's run trades toward today's fresh signal;
      no back-fill.
 
@@ -262,7 +262,7 @@ def main():
     elif delta == 0:
         decision["action"] = (
             f"hold (buy {requested_delta} unaffordable: cash {cash:.2f} at {px} "
-            f"funds 0 shares)" if capped else "hold (already at target)"
+            f"pays for 0 shares)" if capped else "hold (already at target)"
         )
     else:
         why = "signal change" if last_acted != alloc else f"drift {drift:.2%}"
