@@ -21,7 +21,7 @@ audit trail), and is not investment advice.
 
 ## Architecture
 
-Git is the home and the truth. Alpaca is execution only, plus its market-data
+Git is the system of record. Alpaca is execution only, plus its market-data
 API as the bars source and its immutable order/fill records as the
 independent witness.
 
