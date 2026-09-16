@@ -12,6 +12,9 @@ Sources
                                 non-halted runs)
   log/ops_log.jsonl             routine-level events (live)
   log/close_log.jsonl           end-of-day equity + QLD buy & hold marks
+  reference/e2_backtest_daily.csv  frozen backtest returns; only AGGREGATES
+                                (vol, drawdown, rolling-window quantiles) are
+                                emitted, never the series
 
 Go-live anchor (dashboard Q6): the first trade_log record carrying an
 `equity` field. Cross-checked against the ops_log `resume` event — if an
@@ -25,7 +28,9 @@ from the wall clock, so --check reproduces byte-identically on any day.
 
 from __future__ import annotations
 
+import csv
 import json
+import math
 import sys
 from collections.abc import Iterator
 from datetime import date, datetime, timedelta
@@ -38,7 +43,18 @@ SIGNAL_LOG = REPO / "log" / "signal_log.jsonl"
 TRADE_LOG = REPO / "log" / "trade_log.jsonl"
 OPS_LOG = REPO / "log" / "ops_log.jsonl"
 CLOSE_LOG = REPO / "log" / "close_log.jsonl"
+BACKTEST = REPO / "reference" / "e2_backtest_daily.csv"
 OUT = REPO / "docs" / "dashboard" / "data.js"
+
+# NYSE full-day closures. Coverage and staleness must not read a holiday as a
+# missed run. Hard-fail outside the listed years: extend deliberately.
+NYSE_HOLIDAYS: dict[int, set[str]] = {
+    2026: {"2026-01-01", "2026-01-19", "2026-02-16", "2026-04-03", "2026-05-25",
+           "2026-06-19", "2026-07-03", "2026-09-07", "2026-11-26", "2026-12-25"},
+    2027: {"2027-01-01", "2027-01-18", "2027-02-15", "2027-03-26", "2027-05-31",
+           "2027-06-18", "2027-07-05", "2027-09-06", "2027-11-25", "2027-12-24"},
+}
+QUANTILES = (0.05, 0.25, 0.5, 0.75, 0.95)
 
 ET = ZoneInfo("America/New_York")
 
@@ -191,8 +207,8 @@ def coverage(
     sigs: list[dict[str, Any]], trades: list[dict[str, Any]], ops: list[dict[str, Any]]
 ) -> list[dict[str, str]]:
     """AUDIT.md §1 rendered: every weekday from the first record to the last
-    is covered by a signal/trade record (log), an ops record (ops), or is a
-    GAP."""
+    is an exchange holiday (closed), covered by a signal/trade record (log),
+    an ops record (ops), or is a GAP."""
     sig_days = {s["run"] for s in sigs}
     trd_days = {t["run_et"] for t in trades}
     ops_days = {o["date"] for o in ops}
@@ -200,13 +216,92 @@ def coverage(
     first, last = min(all_days), max(all_days)
     out = []
     for d in weekdays(first, last):
-        if d in sig_days or d in trd_days:
+        if int(d[:4]) not in NYSE_HOLIDAYS:
+            fail(f"coverage: no NYSE holiday calendar for {d[:4]} — extend NYSE_HOLIDAYS")
+        if d in NYSE_HOLIDAYS[int(d[:4])]:
+            st = "closed"
+        elif d in sig_days or d in trd_days:
             st = "log"
         elif d in ops_days:
             st = "ops"
         else:
             st = "gap"
         out.append({"d": d, "st": st})
+    return out
+
+
+# --------------------------------------------------------------------------
+# Backtest reference (aggregates only)
+# --------------------------------------------------------------------------
+
+def quantile(xs: list[float], q: float) -> float:
+    """Linear interpolation between order statistics (numpy default)."""
+    ys = sorted(xs)
+    h = (len(ys) - 1) * q
+    lo = math.floor(h)
+    return ys[lo] + (h - lo) * (ys[min(lo + 1, len(ys) - 1)] - ys[lo])
+
+
+def ann_vol(rets: list[float]) -> float:
+    m = sum(rets) / len(rets)
+    return math.sqrt(sum((r - m) ** 2 for r in rets) / (len(rets) - 1)) * math.sqrt(252)
+
+
+def max_dd(rets: list[float]) -> float:
+    level, peak, worst = 1.0, 1.0, 0.0
+    for r in rets:
+        level *= 1 + r
+        peak = max(peak, level)
+        worst = min(worst, level / peak - 1)
+    return worst
+
+
+def backtest(closes: list[dict[str, Any]]) -> dict[str, Any]:
+    """Full-period stats for E2 and QLD, plus the distribution of every
+    overlapping N-session window, N = live close-to-close returns so far."""
+    rows = []
+    with BACKTEST.open(encoding="utf-8") as f:
+        for r in csv.DictReader(line for line in f if not line.startswith("#")):
+            if r["New_ret"] == "":
+                continue
+            try:
+                rows.append((r["Period"], float(r["New_ret"]), float(r["QLD_ret"])))
+            except (KeyError, ValueError) as e:
+                fail(f"{BACKTEST.name}: bad row {r} ({e})")
+    if len(rows) < 252:
+        fail(f"{BACKTEST.name}: only {len(rows)} return rows")
+    e2 = [x[1] for x in rows]
+    qld = [x[2] for x in rows]
+    live = [closes[i]["equity"] / closes[i - 1]["equity"] - 1 for i in range(1, len(closes))]
+    n = len(live)
+    out: dict[str, Any] = {
+        "from": rows[0][0], "to": rows[-1][0], "days": len(rows),
+        "vol": ann_vol(e2), "dd": max_dd(e2),
+        "cagr": math.prod(1 + r for r in e2) ** (252 / len(e2)) - 1,
+        "qldVol": ann_vol(qld), "qldDd": max_dd(qld),
+        "qldCagr": math.prod(1 + r for r in qld) ** (252 / len(qld)) - 1,
+        "n": n,
+    }
+    if n < 2:
+        return out
+    win_ret, win_dd, win_vol = [], [], []
+    for i in range(len(e2) - n + 1):
+        w = e2[i:i + n]
+        win_ret.append(math.prod(1 + r for r in w) - 1)
+        win_dd.append(max_dd(w))
+        win_vol.append(ann_vol(w))
+    live_ret = math.prod(1 + r for r in live) - 1
+    live_dd = max_dd(live)
+    live_vol = ann_vol(live)
+    out.update({
+        "windows": len(win_ret),
+        "retQ": [quantile(win_ret, q) for q in QUANTILES],
+        "ddQ": [quantile(win_dd, q) for q in QUANTILES],
+        "volQ": [quantile(win_vol, q) for q in QUANTILES],
+        "retPct": sum(x <= live_ret for x in win_ret) / len(win_ret),
+        "ddPct": sum(x <= live_dd for x in win_dd) / len(win_dd),
+        "volPct": sum(x <= live_vol for x in win_vol) / len(win_vol),
+    })
     return out
 
 
@@ -236,6 +331,7 @@ def emit(
     anchor: dict[str, Any] | None,
     cov: list[dict[str, str]],
     closes: list[dict[str, Any]],
+    bt: dict[str, Any],
 ) -> str:
     lines = []
     add = lines.append
@@ -316,6 +412,19 @@ def emit(
         add(f'{{d:{jstr(c["d"])},st:{jstr(c["st"])}}},')
     add("];")
 
+    # -- exchange holidays (staleness check on the page)
+    add("const HOLIDAYS = [" + ",".join(
+        jstr(d) for y in sorted(NYSE_HOLIDAYS) for d in sorted(NYSE_HOLIDAYS[y])) + "];")
+
+    # -- backtest aggregates
+    def jval(v: Any) -> str:
+        if isinstance(v, str):
+            return jstr(v)
+        if isinstance(v, list):
+            return "[" + ",".join(jnum(x, 6) for x in v) + "]"
+        return jnum(v, 6)
+    add("const BACKTEST = {" + ",".join(f"{k}:{jval(v)}" for k, v in bt.items()) + "};")
+
     return "\n".join(lines) + "\n"
 
 
@@ -326,7 +435,7 @@ def main() -> None:
     anchor = derive_anchor(trades, ops)
     cov = coverage(sigs, trades, ops)
     closes = parse_closes()
-    out = emit(sigs, trades, ops, anchor, cov, closes)
+    out = emit(sigs, trades, ops, anchor, cov, closes, backtest(closes))
 
     if "--check" in sys.argv:
         current = OUT.read_text(encoding="utf-8") if OUT.exists() else None
