@@ -1,6 +1,6 @@
-// ===== E2 dashboard data — derived from log/*.jsonl, latest log 2026-09-04 =====
+// ===== E2 dashboard data — derived from log/*.jsonl, latest log 2026-09-16 =====
 // Regenerate: python3 scripts/build_dashboard_data.py  (--check verifies byte-identity). NEVER hand-edit.
-const AS_OF = "2026-09-04";
+const AS_OF = "2026-09-16";
 const SIG = [
 {d:"2026-08-03",run:"2026-08-04",px:86.62,sma200:76.7374,sma20:87.023,vol:0.482231,hi:0.640699,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:null,src:null,bars:2660},
 {d:"2026-08-03",run:"2026-08-04",px:86.62,sma200:76.7374,sma20:87.023,vol:0.482231,hi:0.640699,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"40716df9d3ba5a333eee03d7a7491bb747e93812b34e9b57083feec1a165a410",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-08-03T23%3A59%3A59Z&limit=10000&sort=asc",bars:2660},
@@ -31,6 +31,13 @@ const SIG = [
 {d:"2026-08-31",run:"2026-09-01",px:90.24,sma200:78.6321,sma20:90.9785,vol:0.347848,hi:0.639192,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"c20ffc5c87066d6caa1fc5ac70e285a3fe403427234e3ddbd045aef97c51d33e",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-08-31T23%3A59%3A59Z&limit=10000&sort=asc",bars:2680},
 {d:"2026-09-01",run:"2026-09-02",px:87.92,sma200:78.7091,sma20:90.7515,vol:0.263324,hi:0.63906,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"ee04f8a7597a247bc4e41522b0e2857502b539bdd04fcf0b29f108820e622df5",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-09-01T23%3A59%3A59Z&limit=10000&sort=asc",bars:2681},
 {d:"2026-09-02",run:"2026-09-03",px:88.31,sma200:78.803,sma20:90.627,vol:0.257698,hi:0.638947,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"466ff9e7fa845bb611b320b8c769920f19f47bf8d41ea121b3cf9bf989e94c9d",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-09-02T23%3A59%3A59Z&limit=10000&sort=asc",bars:2682},
+{d:"2026-09-04",run:"2026-09-08",px:90.68,sma200:79.0182,sma20:90.563,vol:0.257576,hi:0.63872,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"7a40f57ab50a473c7cdccf3d458f8c4d9e45a035b25ea85c6694dc06a42644a7",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-09-04T23%3A59%3A59Z&limit=10000&sort=asc",bars:2684},
+{d:"2026-09-08",run:"2026-09-09",px:90.53,sma200:79.137,sma20:90.508,vol:0.256769,hi:0.638607,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"730eba4405b4abea965e37758b99dd5a520bbf09d6794785efc9240ee57a16c7",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-09-08T23%3A59%3A59Z&limit=10000&sort=asc",bars:2685},
+{d:"2026-09-09",run:"2026-09-10",px:89.98,sma200:79.2494,sma20:90.458,vol:0.256446,hi:0.638494,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"f3d353ca595106796bf579dd3073ec561c16cfa045febdad8ec35a013ef439bc",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-09-09T23%3A59%3A59Z&limit=10000&sort=asc",bars:2686},
+{d:"2026-09-10",run:"2026-09-11",px:88.02,sma200:79.3678,sma20:90.243,vol:0.260541,hi:0.63838,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"4920147e2aa0f8eb1f0abd4be3d73c5c0c1428509be7f41a9e6d228de74379ed",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-09-10T23%3A59%3A59Z&limit=10000&sort=asc",bars:2687},
+{d:"2026-09-11",run:"2026-09-14",px:89.55,sma200:79.4891,sma20:89.999,vol:0.254193,hi:0.638267,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"5570e3227627b6142f5cde9971b07d7831f718e1ed6ae222d550090558b1535e",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-09-11T23%3A59%3A59Z&limit=10000&sort=asc",bars:2688},
+{d:"2026-09-14",run:"2026-09-15",px:88.1,sma200:79.5864,sma20:89.6965,vol:0.258789,hi:0.638154,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"ca4cd2f62364c4dad85e4fcda359a08d590dbba462ff0e2b1dab54fe88347644",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-09-14T23%3A59%3A59Z&limit=10000&sort=asc",bars:2689},
+{d:"2026-09-15",run:"2026-09-16",px:86.96,sma200:79.674,sma20:89.3525,vol:0.261096,hi:0.638041,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"d3669426473bbbfcd4c3ea104c2c519e301e6d1b3a93040af689636a2fbb47a1",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-09-15T23%3A59%3A59Z&limit=10000&sort=asc",bars:2690},
 ];
 const TRD = [
 {run:"2026-08-04T15:43:31+00:00",runEt:"2026-08-04",sig:"2026-08-03",alloc:1,action:"HALTED by HALT file — no order",orderId:null,dry:false,equity:null,refPx:null,curQty:null,tgtQty:null,lastActed:null,haltReason:"halted 2026-08-04: pre-go-live — routine plumbing test only, no orders until e2bot-08 (account reset to $100k pending)"},
@@ -58,6 +65,13 @@ const TRD = [
 {run:"2026-09-01T16:08:58+00:00",runEt:"2026-09-01",sig:"2026-08-31",alloc:1,action:"hold (signal unchanged; drift 0.39% within band 1%)",orderId:null,dry:false,equity:96029.36,refPx:88.735,curQty:1078,tgtQty:1082,lastActed:1,haltReason:null},
 {run:"2026-09-02T16:09:04+00:00",runEt:"2026-09-02",sig:"2026-09-01",alloc:1,action:"hold (signal unchanged; drift 0.39% within band 1%)",orderId:null,dry:false,equity:95614.33,refPx:88.35,curQty:1078,tgtQty:1082,lastActed:1,haltReason:null},
 {run:"2026-09-03T16:08:50+00:00",runEt:"2026-09-03",sig:"2026-09-02",alloc:1,action:"hold (signal unchanged; drift 0.38% within band 1%)",orderId:null,dry:false,equity:97684.09,refPx:90.27,curQty:1078,tgtQty:1082,lastActed:1,haltReason:null},
+{run:"2026-09-08T16:08:46+00:00",runEt:"2026-09-08",sig:"2026-09-04",alloc:1,action:"hold (signal unchanged; drift 0.38% within band 1%)",orderId:null,dry:false,equity:98373.9,refPx:90.9099,curQty:1078,tgtQty:1082,lastActed:1,haltReason:null},
+{run:"2026-09-09T16:08:40+00:00",runEt:"2026-09-09",sig:"2026-09-08",alloc:1,action:"hold (signal unchanged; drift 0.38% within band 1%)",orderId:null,dry:false,equity:97166.65,refPx:89.79,curQty:1078,tgtQty:1082,lastActed:1,haltReason:null},
+{run:"2026-09-10T16:07:53+00:00",runEt:"2026-09-10",sig:"2026-09-09",alloc:1,action:"hold (signal unchanged; drift 0.39% within band 1%)",orderId:null,dry:false,equity:95635.89,refPx:88.37,curQty:1078,tgtQty:1082,lastActed:1,haltReason:null},
+{run:"2026-09-11T16:08:37+00:00",runEt:"2026-09-11",sig:"2026-09-10",alloc:1,action:"hold (signal unchanged; drift 0.38% within band 1%)",orderId:null,dry:false,equity:97403.81,refPx:90.01,curQty:1078,tgtQty:1082,lastActed:1,haltReason:null},
+{run:"2026-09-14T16:07:47+00:00",runEt:"2026-09-14",sig:"2026-09-11",alloc:1,action:"hold (signal unchanged; drift 0.39% within band 1%)",orderId:null,dry:false,equity:95323.27,refPx:88.08,curQty:1078,tgtQty:1082,lastActed:1,haltReason:null},
+{run:"2026-09-15T16:07:52+00:00",runEt:"2026-09-15",sig:"2026-09-14",alloc:1,action:"hold (signal unchanged; drift 0.40% within band 1%)",orderId:null,dry:false,equity:94207.54,refPx:87.045,curQty:1078,tgtQty:1082,lastActed:1,haltReason:null},
+{run:"2026-09-16T16:06:44+00:00",runEt:"2026-09-16",sig:"2026-09-15",alloc:1,action:"hold (signal unchanged; drift 0.39% within band 1%)",orderId:null,dry:false,equity:95592.77,refPx:88.33,curQty:1078,tgtQty:1082,lastActed:1,haltReason:null},
 ];
 const OPS = [
 {at:"2026-08-04T12:17:23+00:00",d:"2026-08-04",ev:"note",note:"e2bot-07: audit convention (AUDIT.md) + runbook adopted; ops log initialized"},
@@ -94,6 +108,11 @@ const OPS = [
 {at:"2026-08-29T16:07:29+00:00",d:"2026-08-29",ev:"market-closed",note:"2026-08-29 Saturday — market closed (next open 2026-08-31 09:30 ET), no signal run, no order; 7th weekend cron misfire (after 08-08, 08-09, 08-15, 08-16, 08-22, 08-23) — the E2BOT-daily schedule is still not restricted to weekdays despite routines/README.md documenting '0 11 * * 1-5'; market-closed guard behaved correctly, nothing traded"},
 {at:"2026-08-30T16:07:59+00:00",d:"2026-08-30",ev:"market-closed",note:"2026-08-30 Sunday — market closed (next open 2026-08-31 09:30 ET), no signal run, no order; 8th weekend cron misfire (after 08-08, 08-09, 08-15, 08-16, 08-22, 08-23, 08-29) — root cause confirmed: E2BOT-daily trigger [routine id redacted] has cron '0 16 * * *' (every day) while routines/README.md documents weekdays only; fix is the day-of-week field -> '0 16 * * 1-5'; not changed by the bot (schedule change needs operator approval); market-closed guard behaved correctly, nothing traded"},
 {at:"2026-09-04T14:09:07+00:00",d:"2026-09-04",ev:"note",note:"2026-09-04 redacted account/routine identifiers and private-repo references in earlier ops_log lines for publication; no trading facts changed (AUDIT.md §5 exception: redaction, not correction)"},
+{at:"2026-09-05T16:07:45+00:00",d:"2026-09-05",ev:"market-closed",note:"2026-09-05 Saturday — market closed (next open 2026-09-08 09:30 ET; Mon 2026-09-07 is Labor Day), no signal run, no order; 9th weekend cron misfire (after 08-08, 08-09, 08-15, 08-16, 08-22, 08-23, 08-29, 08-30) — E2BOT-daily still on a 7-day cron instead of the documented weekdays-only schedule; market-closed guard behaved correctly, nothing traded"},
+{at:"2026-09-05T16:07:45+00:00",d:"2026-09-05",ev:"note",note:"2026-09-04 Friday was a trading day with no logged run: no signal_log entry (last computed_at_utc 2026-09-03T16:08:47Z for signal_date 2026-09-02) and no trade_log entry; the only 2026-09-04 ops entry is the redaction note. Recorded here for trading-day accounting (AUDIT.md); cause unknown to this run — routine did not fire or did not complete. Third missed trading day of the forward test; README status block (22 days / 20 runs, as of 2026-09-03) is now stale."},
+{at:"2026-09-06T16:07:07+00:00",d:"2026-09-06",ev:"market-closed",note:"2026-09-06 Sunday — market closed (next open 2026-09-08 09:30 ET; Mon 2026-09-07 is Labor Day), no signal run, no order; 10th weekend cron misfire (after 08-08, 08-09, 08-15, 08-16, 08-22, 08-23, 08-29, 08-30, 09-05) — E2BOT-daily still on a 7-day cron instead of the documented weekdays-only schedule; market-closed guard behaved correctly, nothing traded"},
+{at:"2026-09-12T16:07:08+00:00",d:"2026-09-12",ev:"market-closed",note:"2026-09-12 Saturday — weekend, market closed, no run (routine fired off-schedule)"},
+{at:"2026-09-13T16:07:11+00:00",d:"2026-09-13",ev:"market-closed",note:"2026-09-13 Sunday — weekend, market closed (next open 2026-09-14 09:30 ET), no signal run, no order; 12th weekend cron misfire (after 08-08, 08-09, 08-15, 08-16, 08-22, 08-23, 08-29, 08-30, 09-05, 09-06, 09-12) — E2BOT-daily still on a 7-day cron instead of the documented '0 11 * * 1-5'; market-closed guard behaved correctly, nothing traded"},
 ];
 const ANCHOR = {d:"2026-08-05",equity:100000,refPx:92.46};
 const COVERAGE = [
@@ -121,4 +140,12 @@ const COVERAGE = [
 {d:"2026-09-02",st:"log"},
 {d:"2026-09-03",st:"log"},
 {d:"2026-09-04",st:"ops"},
+{d:"2026-09-07",st:"gap"},
+{d:"2026-09-08",st:"log"},
+{d:"2026-09-09",st:"log"},
+{d:"2026-09-10",st:"log"},
+{d:"2026-09-11",st:"log"},
+{d:"2026-09-14",st:"log"},
+{d:"2026-09-15",st:"log"},
+{d:"2026-09-16",st:"log"},
 ];
