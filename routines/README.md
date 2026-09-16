@@ -13,6 +13,10 @@ safe on early-close days). Weekly rollup Friday after close.
 |--------------|------------------------|-----------------|-------------|
 | E2BOT-daily  | `0 11 * * 1-5`         | 12:00 Mon–Fri   | `daily.md`  |
 | E2BOT-weekly | `20 15 * * 5`          | 16:20 Friday    | `weekly.md` |
+| E2BOT-close  | `30 0 * * 2-6` (UTC)   | 20:30 Mon–Fri (19:30 in winter) | `close.md` |
+
+E2BOT-close runs after Alpaca's daily equity mark (stamped 20:00 ET) exists;
+the UTC cron keeps it after that in both summer and winter time.
 
 If the routine UI supports America/New_York directly, use `0 12 * * 1-5`
 and `20 16 * * 5` instead.

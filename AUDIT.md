@@ -119,6 +119,16 @@ neither is a gap, and the runbook's liveness check exists to catch it.
 *More* than one signal record for a day is normal, not a gap (see the
 run-log contract above).
 
+### `log/close_log.jsonl` — the day's result at the close
+
+Written by the E2BOT-close routine via `python3 scripts/close_mark.py`
+(read-only; no orders). One record per completed session from the
+2026-08-04 base close: `session`, `recorded_at_utc`, `equity` (Alpaca's daily
+closing equity), `qld_close` (raw), `qld_tr` (QLD total-return factor since the
+base close). The dashboard's performance comparison reads only this log, so
+both lines are measured at the same moment. A missed night is backfilled by
+the next run; it is not a gap in the trading-day accounting above.
+
 `log/last_acted_signal.json` is *state*, not audit: it is the last signal
 acted on, overwritten each run. It is committed so the cloud runtime (fresh
 clone every day) can read it, but the trade log is the record of truth.

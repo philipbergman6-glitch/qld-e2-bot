@@ -328,15 +328,16 @@ function kpi(label, value, sub, color) {
   if (ANCHOR) {
     const liveEq = TRD.filter(t => t.equity != null && !t.dry);
     const cur = liveEq[liveEq.length-1];
-    const ret = (cur.equity / ANCHOR.equity - 1) * 100;
-    const sigsSince = SIG_DAYS.filter(s => s.d >= ANCHOR.d || s.run >= ANCHOR.d);
-    const qldRet = sigsSince.length > 1 ? (lastSig.px / sigsSince[0].px - 1) * 100 : null;
+    /* both returns from CLOSE: same base close, same end close */
+    const base = CLOSE[0], end = CLOSE[CLOSE.length - 1];
+    const ret = (end.equity / base.equity - 1) * 100;
+    const qldRet = (end.qldTr - 1) * 100;
     const dayN = new Set(liveEq.map(t => t.runEt)).size;
-    k.push(kpi("Equity — 12:00 ET mark", money(cur.equity), `forward test day ${dayN}`, "var(--violet)"));
+    k.push(kpi("Equity — close", money(end.equity), `${fmtD(end.d)} close · forward test day ${dayN}`, "var(--violet)"));
     k.push(kpi("Since go-live", `<span class="${ret>=0?'up':'dn'}">${pct(ret,2)}</span>`,
-               `anchor ${money(ANCHOR.equity)} · ${fmtD(ANCHOR.d)}`, ret>=0?"var(--green)":"var(--red)"));
-    k.push(kpi("QLD buy &amp; hold", qldRet==null ? "—" : `<span class="${qldRet>=0?'up':'dn'}">${pct(qldRet,2)}</span>`,
-               qldRet==null ? "meaningful from session 2" : "same window, total-return closes", "var(--cyan)"));
+               `base ${money(base.equity)} · ${fmtD(base.d)} close`, ret>=0?"var(--green)":"var(--red)"));
+    k.push(kpi("QLD buy &amp; hold", `<span class="${qldRet>=0?'up':'dn'}">${pct(qldRet,2)}</span>`,
+               "same capital, same closes, dividends included", "var(--cyan)"));
     k.push(kpi("Position", cur.curQty != null ? `${cur.curQty} <span class="dim" style="font-size:13px">QLD</span>` : "—",
                cur.tgtQty != null ? `target ${cur.tgtQty} sh @ ref ${cur.refPx ? "$"+cur.refPx.toFixed(2) : "—"}` : "", "var(--cyan)"));
   } else {
@@ -371,14 +372,11 @@ function kpi(label, value, sub, color) {
   }
   /* live equity vs QLD, indexed to 100 at anchor */
   $("heroTitle").textContent = "Forward test — equity vs QLD buy & hold";
-  $("heroSub").textContent = "indexed to 100 at go-live · equity is a 12:00 ET mark";
-  const eqPts = [];
-  const seen = new Set();
-  for (const t of TRD) if (t.equity != null && !t.dry && !seen.has(t.runEt)) { seen.add(t.runEt); eqPts.push({d:t.runEt, v:t.equity}); }
-  const px0 = SIG_DAYS.find(s => s.run >= ANCHOR.d) || lastSig;
-  const qldPts = SIG_DAYS.filter(s => s.run >= ANCHOR.d).map(s => ({d:s.run, v: s.px / px0.px * ANCHOR.equity}));
+  $("heroSub").textContent = "both at the official close · same starting capital";
+  const eqPts = CLOSE.map(c => ({d:c.d, v:c.equity}));
+  const qldPts = CLOSE.map(c => ({d:c.d, v:c.qldTr * CLOSE[0].equity}));
   const all = [...eqPts, ...qldPts];
-  const W=1160, H=300, P={l:56,r:14,t:16,b:26};
+  const W=1160, H=300, P={l:84,r:14,t:16,b:26};
   const dates = [...new Set(all.map(p=>p.d))].sort();
   const xi = d => P.l + (dates.indexOf(d) / Math.max(1, dates.length-1)) * (W-P.l-P.r);
   let lo = Math.min(...all.map(p=>p.v)), hi = Math.max(...all.map(p=>p.v));
@@ -395,9 +393,8 @@ function kpi(label, value, sub, color) {
     ${eqPts.map(p=>`<circle cx="${xi(p.d)}" cy="${y(p.v)}" r="3.4" fill="var(--violet)"/>`).join("")}
     ${qldPts.map(p=>`<circle cx="${xi(p.d)}" cy="${y(p.v)}" r="2.6" fill="var(--cyan)" opacity="0.8"/>`).join("")}
   </svg>
-  <div class="legend"><span><i style="background:var(--violet)"></i>E2 forward test (12:00 ET equity mark)</span>
-  <span><i style="background:var(--cyan)"></i>QLD buy &amp; hold, same capital</span>
-  <span class="faint">day 0 not yet invested — first MOC order fills at that day's close</span></div></div>`;
+  <div class="legend"><span><i style="background:var(--violet)"></i>E2 forward test (closing equity)</span>
+  <span><i style="background:var(--cyan)"></i>QLD buy &amp; hold, same capital</span></div></div>`;
 })();
 
 /* ---------- rule state (signature) ---------- */

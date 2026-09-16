@@ -11,6 +11,7 @@ Sources
   log/trade_log.jsonl           execution records (live; `equity` only on
                                 non-halted runs)
   log/ops_log.jsonl             routine-level events (live)
+  log/close_log.jsonl           end-of-day equity + QLD buy & hold marks
 
 Go-live anchor (dashboard Q6): the first trade_log record carrying an
 `equity` field. Cross-checked against the ops_log `resume` event — if an
@@ -36,6 +37,7 @@ REPO = Path(__file__).resolve().parent.parent
 SIGNAL_LOG = REPO / "log" / "signal_log.jsonl"
 TRADE_LOG = REPO / "log" / "trade_log.jsonl"
 OPS_LOG = REPO / "log" / "ops_log.jsonl"
+CLOSE_LOG = REPO / "log" / "close_log.jsonl"
 OUT = REPO / "docs" / "dashboard" / "data.js"
 
 ET = ZoneInfo("America/New_York")
@@ -148,6 +150,20 @@ def parse_ops() -> list[dict[str, Any]]:
     return ops
 
 
+def parse_closes() -> list[dict[str, Any]]:
+    closes = []
+    for r in read_jsonl(CLOSE_LOG):
+        c = {
+            "session": need(r, "session", "close_log"),
+            "equity": float(need(r, "equity", "close_log")),
+            "qld_tr": float(need(r, "qld_tr", "close_log")),
+        }
+        if closes and c["session"] <= closes[-1]["session"]:
+            fail(f"close_log: session {c['session']} not after {closes[-1]['session']}")
+        closes.append(c)
+    return closes
+
+
 def derive_anchor(trades: list[dict[str, Any]], ops: list[dict[str, Any]]) -> dict[str, Any] | None:
     """First trade record carrying equity = go-live anchor (Q6 option A),
     cross-checked against the ops resume event."""
@@ -219,11 +235,12 @@ def emit(
     ops: list[dict[str, Any]],
     anchor: dict[str, Any] | None,
     cov: list[dict[str, str]],
+    closes: list[dict[str, Any]],
 ) -> str:
     lines = []
     add = lines.append
     as_of = max([s["run"] for s in sigs] + [t["run_et"] for t in trades]
-                + [o["date"] for o in ops])
+                + [o["date"] for o in ops] + [c["session"] for c in closes])
 
     add(f"// ===== E2 dashboard data — derived from log/*.jsonl, "
         f"latest log {as_of} =====")
@@ -286,6 +303,13 @@ def emit(
     else:
         add("const ANCHOR = null; // no live equity record yet — pre-first-run")
 
+    # -- end-of-day marks (both lines at the official close)
+    add("const CLOSE = [")
+    for c in closes:
+        add(f'{{d:{jstr(c["session"])},equity:{jnum(c["equity"], 2)},'
+            f'qldTr:{jnum(c["qld_tr"], 6)}}},')
+    add("];")
+
     # -- coverage strip
     add("const COVERAGE = [")
     for c in cov:
@@ -301,7 +325,8 @@ def main() -> None:
     ops = parse_ops()
     anchor = derive_anchor(trades, ops)
     cov = coverage(sigs, trades, ops)
-    out = emit(sigs, trades, ops, anchor, cov)
+    closes = parse_closes()
+    out = emit(sigs, trades, ops, anchor, cov, closes)
 
     if "--check" in sys.argv:
         current = OUT.read_text(encoding="utf-8") if OUT.exists() else None
@@ -314,7 +339,8 @@ def main() -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(out, encoding="utf-8")
     print(f"wrote {OUT} — SIG {len(sigs)} · TRD {len(trades)} · OPS {len(ops)} "
-          f"· anchor {'yes' if anchor else 'PRE-LIVE'} · coverage {len(cov)}d")
+          f"· CLOSE {len(closes)} · anchor {'yes' if anchor else 'PRE-LIVE'} "
+          f"· coverage {len(cov)}d")
 
 
 if __name__ == "__main__":
