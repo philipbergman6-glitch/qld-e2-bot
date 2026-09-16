@@ -25,7 +25,7 @@ IMPORTANT — FAILURE RULE:
   "E2 BOT FAILURE $DATE" with the script name and its stderr (redact any
   key material), then record and push the failure:
     bash scripts/oplog.sh failure "$DATE <script>: <one-line cause>"
-    git add log/ && git commit -m "E2 daily $DATE: FAILURE <cause>" && git push origin main
+    python3 scripts/build_dashboard_data.py; git add log/ docs/dashboard/data.js && git commit -m "E2 daily $DATE: FAILURE <cause>" && git push origin main
   then stop. A missed day self-heals tomorrow by design.
 
 STEP 0 — Trading day check:
@@ -34,7 +34,7 @@ If the market is closed today (holiday), record it, push, send one email
 "E2 heartbeat $DATE — market closed, no run" and STOP. (Weekends are
 excluded by cron already.)
     bash scripts/oplog.sh market-closed "$DATE holiday — no run"
-    git add log/ && git commit -m "E2 daily $DATE: market closed" && git push origin main
+    python3 scripts/build_dashboard_data.py; git add log/ docs/dashboard/data.js && git commit -m "E2 daily $DATE: market closed" && git push origin main
 Every trading day must be accounted for by a signal record or an ops record
 (AUDIT.md).
 
