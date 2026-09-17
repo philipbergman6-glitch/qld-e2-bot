@@ -20,8 +20,9 @@ DATA="${ALPACA_DATA_ENDPOINT:-https://data.alpaca.markets/v2}"
 H_KEY="APCA-API-KEY-ID: $ALPACA_API_KEY"
 H_SEC="APCA-API-SECRET-KEY: $ALPACA_SECRET_KEY"
 
-# curl wrapper: retries up to 3x on transient errors (incl. HTTP 429),
-# honours Retry-After, exponential backoff via curl's built-in --retry.
+# curl wrapper: retries up to 3x on transient errors (incl. HTTP 429) via
+# curl's built-in --retry, a fixed 1s apart (--retry-delay overrides curl's
+# exponential backoff), capped at 30s in total.
 req() {
   curl -fsS --retry 3 --retry-delay 1 --retry-max-time 30 \
     -H "$H_KEY" -H "$H_SEC" "$@"

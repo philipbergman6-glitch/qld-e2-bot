@@ -2,7 +2,8 @@
 # Notification wrapper. Sends an email via the Resend API.
 # Usage: bash scripts/email.sh "<message>"
 # The first line of the message is the subject.
-# If credentials are unset, appends to a local fallback file.
+# If credentials are unset, the message is kept in a local fallback file and
+# the script exits 2: an alert that reached nobody is a failure, never a success.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -32,9 +33,9 @@ subject="${msg%%$'\n'*}"
 
 if [[ -z "${RESEND_API_KEY:-}" || -z "${EMAIL_TO:-}" || -z "${EMAIL_FROM:-}" ]]; then
   printf "\n---\n## %s (fallback — email not configured)\n%s\n" "$stamp" "$msg" >> "$FALLBACK"
-  echo "[email fallback] appended to DAILY-SUMMARY.md"
-  echo "$msg"
-  exit 0
+  echo "FATAL: email not sent: RESEND_API_KEY / EMAIL_TO / EMAIL_FROM not all set;" \
+       "message kept in DAILY-SUMMARY.md" >&2
+  exit 2
 fi
 
 payload="$(python3 -c "

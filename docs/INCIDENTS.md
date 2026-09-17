@@ -134,7 +134,7 @@ commit SHAs on `main`.
   in an operator session; the union rule (never drop a log line) came from
   AUDIT.md §5.
 
-## 6. Weekend misfires and one silent miss — 2026-08-08 → open
+## 6. Weekend misfires and two silent misses — 2026-08-08 → open
 
 - **Symptom:** the daily routine fires on Saturdays and Sundays (8 times by
   08-30). Each time the clock check sees the market closed, writes a
@@ -155,3 +155,32 @@ commit SHAs on `main`.
 - **Agent vs operator:** agent diagnosed the cron field and recorded the
   exact fix, then stopped ("schedule change needs operator approval").
   Operator has not yet applied it.
+- **Update 2026-09-17:** still open. Weekend misfires now number 12
+  (`ops_log 2026-09-05`, `09-06`, `09-12`, `09-13` added to the list above).
+  A second trading day, **2026-09-04**, has no signal or trade record; the
+  run on 2026-09-08 (after the weekend and Labor Day) self-healed from the
+  latest close. Cause unknown, same hypothesis as 08-18: a cloud-side run
+  that never started. The only ops line dated 09-04 is an unrelated redaction
+  note, which the dashboard's coverage strip wrongly counted as covering the
+  day until 2026-09-17; a `note` no longer accounts for a trading day
+  (`scripts/build_dashboard_data.py`, `coverage`). Evidence:
+  `ops_log 2026-09-05` (`note`).
+
+## 7. Closing marks: backfilled, and the nightly routine has not yet landed one — 2026-09-16 → open
+
+- **Symptom:** `log/close_log.jsonl` holds 30 records for 2026-08-04 to
+  2026-09-15, all with the same `recorded_at_utc` (2026-09-16T17:19:58Z). No
+  `E2 close` commit exists for the 2026-09-16 session.
+- **Root cause:** the log was introduced on 2026-09-16 and backfilled in one
+  run (`4f5965e`). For the missing 09-16 mark: observed from an operator
+  session at 2026-09-17 06:18 UTC, Alpaca's `portfolio/history` (1D) did not
+  yet carry an equity value for the 09-16 session, so `close_mark.py`
+  hard-fails with `incomplete closing data for 2026-09-16: equity=None
+  bar=yes`. Hypothesis, not established: Alpaca publishes the daily equity
+  mark later than the 20:30 ET the routine is scheduled for. Alternative: the
+  E2BOT-close routine is not installed yet.
+- **Fix:** none yet. The backfill is disclosed in AUDIT.md §4. The schedule
+  question needs an operator check of when the mark appears, then a schedule
+  change; the script backfills missed sessions by design, so no mark is lost.
+- **Agent vs operator:** found during a repo review in an operator session;
+  schedule changes are the operator's.

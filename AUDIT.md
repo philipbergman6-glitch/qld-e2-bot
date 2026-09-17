@@ -231,6 +231,14 @@ Stated so the argument is not oversold:
   record alone. Mitigated for now by the CI matrix (a library change that moved
   the rule would fail a build), and closed properly when version stamping lands
   in the signal record (not yet shipped).
+- **The closing marks for 2026-08-04 to 2026-09-15 are not contemporaneous.**
+  `log/close_log.jsonl` was introduced on 2026-09-16 and its first 30 records
+  were backfilled in one run (`recorded_at_utc 2026-09-16T17:19:58Z`, commit
+  `4f5965e`) from Alpaca's portfolio history and bars, not written night by
+  night as §2 requires of the other logs. They are a broker read-back, re-
+  derivable from Alpaca by anyone with the account; they are not evidence
+  recorded before the fact. Only marks with a `recorded_at_utc` on their own
+  session's night carry that property.
 - **Bars are not archived**, only hashed. If Alpaca restates history
   (adjustment changes), the old hash stops reproducing — that is a *feature*
   (it flags the restatement) but it means step 2 can require a same-vintage

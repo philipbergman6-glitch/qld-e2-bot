@@ -5,6 +5,8 @@ buy & hold, both at the official close, so the dashboard compares like with like
 Read-only against Alpaca: places no orders, touches no engine state. Appends one
 record per completed session not yet logged (first run backfills from BASE).
 Exits 0 with no change when already up to date. HARD-FAILS on missing data.
+Keys come from the process environment (cloud routine) or the repo-root .env
+(operator clone), the same way the engine scripts load them.
 
 Fields: session (ET date), recorded_at_utc, equity (Alpaca daily closing
 equity), qld_close (raw close), qld_tr (total-return factor vs the BASE close:
@@ -26,6 +28,9 @@ from typing import Any, NoReturn
 from zoneinfo import ZoneInfo
 
 REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO / "engine"))
+from _common import load_env  # noqa: E402  (stdlib-only helper; engine is not modified)
+
 LOG = REPO / "log" / "close_log.jsonl"
 ET = ZoneInfo("America/New_York")
 SYM = "QLD"
@@ -54,6 +59,7 @@ def get(url: str, params: dict[str, str]) -> Any:
 
 
 def main() -> None:
+    load_env()
     api = os.environ.get("ALPACA_ENDPOINT", "https://paper-api.alpaca.markets/v2")
     data = os.environ.get("ALPACA_DATA_ENDPOINT", "https://data.alpaca.markets/v2")
     now = datetime.now(timezone.utc)

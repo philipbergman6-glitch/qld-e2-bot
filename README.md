@@ -6,10 +6,15 @@
 — every number on it is derived from the committed `log/*.jsonl` by a
 deterministic parser (`scripts/build_dashboard_data.py`), no API calls.
 
-**Status (as of 2026-09-03):** paper forward test running since 2026-08-05 —
-22 trading days elapsed, 20 with a logged run (one lost to a cron
-misfire, one to an unexplained non-start — both recorded in
-`log/ops_log.jsonl`), 6 MOC orders submitted. Incident history: [`docs/INCIDENTS.md`](docs/INCIDENTS.md).
+**Status (as of 2026-09-16):** paper forward test running since 2026-08-05 —
+30 trading days elapsed, 28 with a logged run. Two days (2026-08-18,
+2026-09-04) have no record at all: unexplained non-starts, shown in red on the
+dashboard's coverage strip. Three more runs in the first week fired before the
+open and traded nothing (logged failures). 6 MOC orders submitted; signal at
+100% and position at target since 2026-08-14. Marked to the 2026-09-15 close:
+equity $94,116 from $100,000 (−5.88%) against QLD buy & hold −5.95%. The
+dashboard is the current figure; this block is a snapshot. Incident history:
+[`docs/INCIDENTS.md`](docs/INCIDENTS.md).
 
 Autonomous paper-trading bot for the frozen **E2 QLD rule** ("graded
 vol-confirmed re-entry"). Deterministic Python computes the signal; Claude
@@ -34,12 +39,16 @@ engine/execute.py         map signal -> at most one MOC order (spec below),
 engine/_common.py         shared: repo root, hard-fail, .env loading
 tests/                    offline unit tests incl. the frozen-rule reference check
 scripts/build_dashboard_data.py
-                          log/*.jsonl -> docs/dashboard/data.js (deterministic)
+                          log/*.jsonl + frozen backtest aggregates ->
+                          docs/dashboard/data.js (deterministic; CI --check)
+scripts/close_mark.py     read-only: closing equity + QLD total-return mark
+                          per session -> log/close_log.jsonl
 scripts/alpaca.sh         bash wrapper for ad-hoc Alpaca calls (Claude glue)
 scripts/email.sh          Resend email wrapper (reports)
 scripts/oplog.sh          append a routine-level event to log/ops_log.jsonl
 reference/                backtest reference signals (derived aggregates only)
-log/                      append-only signal + trade + ops logs, committed daily
+log/                      append-only signal + trade + ops + close logs, committed daily
+docs/dashboard/           the public page: index.html + generated data.js
 docs/INCIDENTS.md         what broke, root cause, fix, agent vs operator
 HALT                      kill switch (absent normally): present => no orders
 ```
@@ -109,6 +118,11 @@ committed file.
 |--------------|---------------|----------------------|-----------------------------|
 | E2BOT-daily  | 12:00 Mon–Fri | `routines/daily.md`  | signal → order → commit → heartbeat email |
 | E2BOT-weekly | 16:20 Fri     | `routines/weekly.md` | read-only rollup email      |
+| E2BOT-close  | 20:30 Mon–Fri | `routines/close.md`  | read-only closing mark → commit → dashboard |
+
+Exact cron strings: `routines/README.md`. Known schedule defects (the daily
+routine still fires on weekends; the closing mark has not yet landed at its
+scheduled time): `docs/INCIDENTS.md` §6–7.
 
 Why 12:00 ET: the previous close is final, and a MOC order submitted at
 noon rests until the close — automatically safe on early-close days
@@ -133,11 +147,13 @@ is recorded in the commit body that introduced it and in `AUDIT.md`, so
 
 ## Setup
 
-- Python ≥ 3.9 (the engine uses stdlib `zoneinfo`); tested on 3.11–3.14.
+- Python ≥ 3.9 (the engine uses stdlib `zoneinfo`); CI runs 3.11, 3.13 and 3.14.
 - `pip install -r requirements.txt` (pandas + numpy, a tested range —
   see the file header; `requirements.lock` is the operator's exact set).
   HTTP is stdlib `urllib` only.
-- `cp env.template .env` and fill Alpaca **paper** keys (never committed).
+- Operator clone: `cp env.template .env` and fill Alpaca **paper** keys (never
+  committed). Cloud routines never have a `.env`: keys are env vars on the
+  routine, and `scripts/email.sh` exits non-zero if its three are missing.
 - `python3 -m unittest discover -s tests` — offline, no keys; includes the
   frozen-rule check against `reference/e2_reference_signals.csv`.
 - Lint: `ruff check .` (`ruff.toml`: E, F, I, B, UP; line length 100). CI

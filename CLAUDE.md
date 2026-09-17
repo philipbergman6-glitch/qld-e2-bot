@@ -29,4 +29,6 @@ override, re-derive, or "sanity-adjust" the signal with your own judgment.
 ## API access
 
 Use `scripts/alpaca.sh` / `scripts/email.sh` for ad-hoc calls; never curl
-the APIs directly. Keys live in `.env` (gitignored) — never print them.
+the APIs directly. Keys live in `.env` (gitignored) on an operator clone; a
+cloud routine gets them as env vars and must never create a `.env`. Never
+print them.

@@ -10,16 +10,21 @@ one alert email, stop.
 STEP 1 — Record the close:
 python3 scripts/close_mark.py
 - Non-zero exit: send ONE email "E2 BOT FAILURE — close mark" with its
-  stderr (redact key material) and STOP. Commit nothing; the next run
-  backfills the missed session by design.
+  stderr (redact key material), then record and push the failure so the repo
+  itself shows it (an emailed-only failure leaves no trace in the audit trail):
+    bash scripts/oplog.sh failure "<ET date> scripts/close_mark.py: <one-line cause>"
+    python3 scripts/build_dashboard_data.py; git add log/ops_log.jsonl docs/dashboard/data.js && git commit -m "E2 close <ET date>: FAILURE <cause>" && git push origin HEAD:main
+  then STOP. The next run backfills the missed session by design.
 - Prints "up to date": STOP. Nothing to commit, no email.
 - Otherwise it printed one JSON line per new session. SESSION = the last
-  line's "session".
+  line's "session", EQUITY = the last line's "equity".
 
 STEP 2 — Rebuild the dashboard, commit, push:
 python3 scripts/build_dashboard_data.py
+(non-zero exit: email "E2 BOT FAILURE — dashboard build" with its stderr, but
+still commit log/close_log.jsonl — the audit trail outranks the dashboard)
 git add log/close_log.jsonl docs/dashboard/data.js
-git commit -m "E2 close $SESSION: equity \$<equity>"
+git commit -m "E2 close $SESSION: equity \$$EQUITY"
 git push origin HEAD:main
 On push failure: pull --rebase origin main and retry once; if it still fails,
 email "E2 BOT FAILURE — close push failed" and stop.
