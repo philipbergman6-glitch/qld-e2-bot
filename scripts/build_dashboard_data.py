@@ -13,8 +13,9 @@ Sources
   log/ops_log.jsonl             routine-level events (live)
   log/close_log.jsonl           end-of-day equity + QLD buy & hold marks
   reference/e2_backtest_daily.csv  frozen backtest returns; only AGGREGATES
-                                (vol, drawdown, rolling-window quantiles) are
-                                emitted, never the series
+                                (full-period and calendar-year statistics,
+                                rolling-window quantiles) are emitted, never
+                                the series
 
 Go-live anchor (dashboard Q6): the first trade_log record carrying an
 `equity` field. Cross-checked against the ops_log `resume` event — if an
@@ -208,11 +209,15 @@ def coverage(
 ) -> list[dict[str, str]]:
     """AUDIT.md §1 rendered: every weekday from the first record to the last
     is an exchange holiday (closed), covered by a signal/trade record (log),
-    an ops record (ops), or is a GAP."""
+    an ops record (ops), or is a GAP.
+
+    A `note` is commentary, not evidence that the routine ran: a trading day
+    whose only record is a note (2026-09-04: a redaction note, no run) is a GAP.
+    """
     sig_days = {s["run"] for s in sigs}
     trd_days = {t["run_et"] for t in trades}
-    ops_days = {o["date"] for o in ops}
-    all_days = sig_days | trd_days | ops_days
+    ops_days = {o["date"] for o in ops if o["event"] != "note"}
+    all_days = sig_days | trd_days | {o["date"] for o in ops}
     first, last = min(all_days), max(all_days)
     out = []
     for d in weekdays(first, last):
@@ -256,22 +261,35 @@ def max_dd(rets: list[float]) -> float:
     return worst
 
 
+def sharpe(rets: list[float]) -> float:
+    """Annualized mean over annualized vol, risk-free rate taken as zero."""
+    return (sum(rets) / len(rets)) * 252 / ann_vol(rets)
+
+
 def backtest(closes: list[dict[str, Any]]) -> dict[str, Any]:
-    """Full-period stats for E2 and QLD, plus the distribution of every
-    overlapping N-session window, N = live close-to-close returns so far."""
+    """Full-period and calendar-year stats for E2 and QLD, plus the
+    distribution of every overlapping N-session window, N = live
+    close-to-close returns so far."""
     rows = []
     with BACKTEST.open(encoding="utf-8") as f:
         for r in csv.DictReader(line for line in f if not line.startswith("#")):
             if r["New_ret"] == "":
                 continue
             try:
-                rows.append((r["Period"], float(r["New_ret"]), float(r["QLD_ret"])))
+                rows.append((r["Period"], float(r["New_ret"]), float(r["QLD_ret"]),
+                             float(r["Effective_alloc"])))
             except (KeyError, ValueError) as e:
                 fail(f"{BACKTEST.name}: bad row {r} ({e})")
     if len(rows) < 252:
         fail(f"{BACKTEST.name}: only {len(rows)} return rows")
     e2 = [x[1] for x in rows]
     qld = [x[2] for x in rows]
+    alloc = [x[3] for x in rows]
+    if any(a not in (0.0, 0.5, 1.0) for a in alloc):
+        fail(f"{BACKTEST.name}: Effective_alloc outside {{0, 0.5, 1}}")
+    years: dict[str, list[tuple[float, float]]] = {}
+    for d, re, rq, _ in rows:
+        years.setdefault(d[:4], []).append((re, rq))
     live = [closes[i]["equity"] / closes[i - 1]["equity"] - 1 for i in range(1, len(closes))]
     n = len(live)
     out: dict[str, Any] = {
@@ -280,9 +298,18 @@ def backtest(closes: list[dict[str, Any]]) -> dict[str, Any]:
         "cagr": math.prod(1 + r for r in e2) ** (252 / len(e2)) - 1,
         "qldVol": ann_vol(qld), "qldDd": max_dd(qld),
         "qldCagr": math.prod(1 + r for r in qld) ** (252 / len(qld)) - 1,
+        "sharpe": sharpe(e2), "qldSharpe": sharpe(qld),
+        "avgAlloc": sum(alloc) / len(alloc),
+        "inMarket": sum(a > 0 for a in alloc) / len(alloc),
+        "changes": sum(alloc[i] != alloc[i - 1] for i in range(1, len(alloc))),
+        "years": [int(y) for y in sorted(years)],
+        "yearE2": [math.prod(1 + a for a, _ in years[y]) - 1 for y in sorted(years)],
+        "yearQld": [math.prod(1 + b for _, b in years[y]) - 1 for y in sorted(years)],
         "n": n,
     }
-    if n < 2:
+    # No window distribution until there are two live returns, or once live
+    # history is as long as the backtest itself (nothing left to rank against).
+    if n < 2 or n >= len(e2):
         return out
     win_ret, win_dd, win_vol = [], [], []
     for i in range(len(e2) - n + 1):

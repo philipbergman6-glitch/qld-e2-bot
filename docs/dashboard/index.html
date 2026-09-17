@@ -4,7 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="light dark">
-<title>E2 / QLD</title>
+<title>E2 / QLD forward test</title>
+<meta name="description" content="Live paper forward test of the E2 rule on QLD: a deterministic trend and volatility allocation signal, one market-on-close order per session, every figure derived from a committed, hash-verified audit log.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="E2 / QLD forward test">
+<meta property="og:description" content="Deterministic trend and volatility allocation on QLD. Live paper record against a 19-year backtest, rendered from a hash-verified audit log.">
+<meta property="og:url" content="https://philipbergman6-glitch.github.io/qld-e2-bot/dashboard/">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23111214'/%3E%3Cpath d='M5 22 L12 14 L17 18 L27 8' fill='none' stroke='%23FAFAF9' stroke-width='3' stroke-linecap='square'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
@@ -19,10 +26,11 @@
     --rule-2: #EFEFEC;
     --ink: #111214;
     --ink-2: #55585F;
-    --ink-3: #8A8D94;
+    --ink-3: #696C73;  /* 5.0:1 on --bg, 4.6:1 on --band-1 (WCAG AA) */
     --band-1: #F0F0ED;
     --band-2: #DEDFDB;
     --series-2: #A5A8AE;
+    --tick: #8A8D94;
     --pos: #1D5BD0;
     --neg: #B3224A;
     --warn: #7A5000;  --warn-bg: #FBF0D8;  --warn-rule: #E9CF97;
@@ -38,10 +46,11 @@
       --rule-2: #1C1E21;
       --ink: #E7E8EA;
       --ink-2: #A0A3AA;
-      --ink-3: #6C7078;
+      --ink-3: #858991;  /* 5.5:1 on --bg, 5.0:1 on --band-1 */
       --band-1: #17191C;
       --band-2: #2A2D32;
       --series-2: #5F636B;
+      --tick: #6C7078;
       --pos: #7EA8FF;
       --neg: #FF7D96;
       --warn: #E7BA55;  --warn-bg: #251D0C;  --warn-rule: #4A3A14;
@@ -56,7 +65,7 @@
          -webkit-font-smoothing: antialiased; }
   .wrap { max-width: 1320px; margin: 0 auto; padding: 0 28px 64px; }
   @media (max-width: 640px) { .wrap { padding: 0 16px 48px; } }
-  a { color: inherit; text-underline-offset: 2px; text-decoration-color: var(--ink-3); }
+  a { color: inherit; text-underline-offset: 2px; text-decoration-color: var(--tick); }
   .mono { font-family: var(--mono); font-size: 11.5px; letter-spacing: -0.1px; }
   .muted { color: var(--ink-2); } .faint { color: var(--ink-3); }
   .pos { color: var(--pos); } .neg { color: var(--neg); }
@@ -149,14 +158,15 @@
   table { width: 100%; border-collapse: collapse; }
   th { font-weight: 400; color: var(--ink-3); font-size: 12px; text-align: left; padding: 0 10px 7px 0;
        border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  td:first-child { white-space: nowrap; }
   td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--rule-2); vertical-align: baseline; }
   th:last-child, td:last-child { padding-right: 0; }
   th.num { text-align: right; }
   tbody tr:hover td { background: var(--band-1); }
-  .rng { position: relative; height: 10px; min-width: 90px; top: 1px; }
+  .rng { position: relative; height: 10px; min-width: 72px; top: 1px; }
   .rng .p90 { position: absolute; top: 3px; height: 4px; background: var(--band-2); }
   .rng .p50 { position: absolute; top: 0; height: 10px; background: var(--series-2); opacity: .55; }
-  .rng .med { position: absolute; top: -2px; height: 14px; width: 1px; background: var(--ink-3); }
+  .rng .med { position: absolute; top: -2px; height: 14px; width: 1px; background: var(--tick); }
   .rng .mk { position: absolute; top: -3px; height: 16px; width: 3px; margin-left: -1px; background: var(--ink); }
   .rng .mk.out { background: var(--warn); }
   .tbl { overflow-x: auto; }
@@ -164,6 +174,15 @@
   td.dim, tr.dim td { color: var(--ink-3); }
   .tag { font-size: 11.5px; font-weight: 500; letter-spacing: 0.2px; white-space: nowrap; }
   .tag.crit { color: var(--crit); } .tag.warn { color: var(--warn); }
+
+  /* ---------- rule + calendar years ---------- */
+  ol.rule { list-style: none; display: grid; gap: 6px; color: var(--ink-2); counter-reset: r; }
+  ol.rule li { padding-left: 20px; position: relative; line-height: 1.5; counter-increment: r; }
+  ol.rule li::before { content: counter(r); position: absolute; left: 0; color: var(--ink-3); font-size: 12px; }
+  ol.rule b { color: var(--ink); font-weight: 500; }
+  #years { position: relative; outline: none; touch-action: pan-y; }
+  #years svg { display: block; width: 100%; overflow: visible; }
+  #years text { font-family: var(--sans); font-size: 11px; fill: var(--ink-3); font-feature-settings: "tnum" 1; }
 
   /* ---------- coverage + events ---------- */
   .cal { display: flex; flex-wrap: wrap; gap: 3px; margin: 2px 0 8px; }
@@ -188,7 +207,7 @@
   dl.kv dd { color: var(--ink-2); overflow-wrap: anywhere; }
   ul.lim { list-style: none; display: grid; gap: 7px; color: var(--ink-2); }
   ul.lim li { padding-left: 14px; position: relative; line-height: 1.5; }
-  ul.lim li::before { content: ""; position: absolute; left: 0; top: 0.68em; width: 5px; height: 1px; background: var(--ink-3); }
+  ul.lim li::before { content: ""; position: absolute; left: 0; top: 0.68em; width: 5px; height: 1px; background: var(--tick); }
   footer { margin-top: 28px; padding-top: 12px; border-top: 1px solid var(--rule); color: var(--ink-3); font-size: 12px; }
 </style>
 </head>
@@ -227,6 +246,20 @@
         <div id="bt"></div>
       </section>
     </aside>
+  </div>
+
+  <div class="row">
+    <section aria-labelledby="h-yr">
+      <div class="sh"><h2 id="h-yr">Backtest by calendar year</h2><span class="sub" id="yrSub"></span></div>
+      <div class="readout" id="yrReadout" aria-live="polite"></div>
+      <div id="years" tabindex="0" role="img" aria-label="Calendar-year returns of the E2 rule against QLD buy and hold; arrow keys step through years"></div>
+      <p class="note" id="yrNote"></p>
+    </section>
+    <section aria-labelledby="h-rule">
+      <div class="sh"><h2 id="h-rule">Rule and full-period backtest</h2><span class="sub">Frozen 2026-07-29</span></div>
+      <ol class="rule" id="rule"></ol>
+      <div id="btFull" style="margin-top:14px"></div>
+    </section>
   </div>
 
   <section aria-labelledby="h-sig">
@@ -373,6 +406,7 @@ const alerts = [];
 (function figures() {
   const f = (l, v, s) => `<div class="fig"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
   const out = [];
+  if (!SIG_DAYS.length) { $("figs").innerHTML = f("Signal", "&ndash;", "No signal record yet"); return; }
   let since = SIG_DAYS[0].d;
   for (let i = SIG_DAYS.length - 1; i > 0; i--) if (SIG_DAYS[i].alloc !== SIG_DAYS[i - 1].alloc) { since = SIG_DAYS[i].d; break; }
   const changed = since !== SIG_DAYS[0].d;
@@ -435,7 +469,7 @@ function drawChart() {
     s += `<line x1="${M.l}" x2="${W - M.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule-2)"/>`;
     s += `<text x="${W - M.r + 8}" y="${y(v) + 4}">${+v.toFixed(2)}</text>`;
   }
-  s += `<line x1="${M.l}" x2="${W - M.r}" y1="${y(100)}" y2="${y(100)}" stroke="var(--ink-3)" stroke-dasharray="2 3"/>`;
+  s += `<line x1="${M.l}" x2="${W - M.r}" y1="${y(100)}" y2="${y(100)}" stroke="var(--tick)" stroke-dasharray="2 3"/>`;
   s += `<path d="${line("q", y)}" fill="none" stroke="var(--series-2)" stroke-width="1.5" stroke-linejoin="round"/>`;
   s += `<path d="${line("e", y)}" fill="none" stroke="var(--ink)" stroke-width="1.75" stroke-linejoin="round"/>`;
   // signal step
@@ -449,7 +483,7 @@ function drawChart() {
   // drawdown
   s += `<text class="lab" x="${M.l}" y="${top3 - 6}">Drawdown</text>`;
   for (let v = 0; v >= ddLo - 1e-9; v -= (ddLo <= -0.2 ? 0.1 : 0.05)) {
-    s += `<line x1="${M.l}" x2="${W - M.r}" y1="${yd(v)}" y2="${yd(v)}" stroke="${v === 0 ? "var(--ink-3)" : "var(--rule-2)"}"/>`;
+    s += `<line x1="${M.l}" x2="${W - M.r}" y1="${yd(v)}" y2="${yd(v)}" stroke="${v === 0 ? "var(--tick)" : "var(--rule-2)"}"/>`;
     s += `<text x="${W - M.r + 8}" y="${yd(v) + 4}">${v === 0 ? "0%" : MINUS + Math.round(-v * 100) + "%"}</text>`;
   }
   s += `<path d="${line("dd", yd)}L${x(n - 1)},${yd(0)}L${x(0)},${yd(0)}Z" fill="var(--series-2)" opacity=".35"/>`;
@@ -464,7 +498,7 @@ function drawChart() {
     s += `<text x="${x(i)}" y="${H - 5}" text-anchor="${anchor}">${R[i].d}</text>`; lastX = x(i);
   });
   // cursor
-  s += `<g id="cur"><line id="curL" y1="0" y2="${top3 + H3}" stroke="var(--ink-3)" stroke-width="1"/>
+  s += `<g id="cur"><line id="curL" y1="0" y2="${top3 + H3}" stroke="var(--tick)" stroke-width="1"/>
         <circle id="curQ" r="3" fill="var(--bg)" stroke="var(--series-2)" stroke-width="1.5"/>
         <circle id="curE" r="3.5" fill="var(--bg)" stroke="var(--ink)" stroke-width="1.75"/></g>`;
   s += `<rect id="hit" x="0" y="0" width="${W}" height="${H}" fill="transparent"/>`;
@@ -498,6 +532,7 @@ let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(dra
 
 /* ---------------- distance to signal change ---------------- */
 (function flip() {
+  if (!lastSig) return;
   const s = lastSig, hist = SIG_DAYS.slice(-60);
   $("flipSub").textContent = `${s.d} close`;
   const clampPos = (v, a, b) => Math.max(0, Math.min(100, (v - a) / (b - a) * 100));
@@ -517,7 +552,7 @@ let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(dra
         <span class="thr" style="left:${clampPos(thr, lo, hi)}%"></span><span class="mk" style="left:${clampPos(value, lo, hi)}%"></span></div>
       <div class="scale"><span>${fmt(lo, true)}</span><span>${fmt(hi, true)}</span></div>
       <div class="scale" style="margin-top:10px"><span>Last ${series.length} sessions</span></div><svg class="spark" style="margin-top:2px" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
-        ${showThr ? `<line x1="0" x2="${w}" y1="${sy(thr)}" y2="${sy(thr)}" stroke="var(--ink-3)" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"/>` : ""}
+        ${showThr ? `<line x1="0" x2="${w}" y1="${sy(thr)}" y2="${sy(thr)}" stroke="var(--tick)" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"/>` : ""}
         <path d="${sp}" fill="none" stroke="var(--ink-2)" stroke-width="1.25" vector-effect="non-scaling-stroke"/></svg>
     </div>`;
   }
@@ -564,20 +599,92 @@ let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(dra
     const lo = Math.min(q[0], live), hi = Math.max(q[4], live), pad = (hi - lo) * 0.08;
     const X = v => ((v - (lo - pad)) / ((hi + pad) - (lo - pad)) * 100).toFixed(2);
     const out = p < 0.05 || p > 0.95;
-    return `<tr><td>${label}</td><td class="num">${fmt(live)}</td>
-      <td style="width:42%"><div class="rng" title="Backtest p5 ${fmt(q[0])}, p25 ${fmt(q[1])}, median ${fmt(q[2])}, p75 ${fmt(q[3])}, p95 ${fmt(q[4])}">
+    return `<tr><td>${label}</td><td class="num">${fmt(live)}</td><td class="num muted">${fmt(q[2])}</td>
+      <td style="width:36%"><div class="rng" title="Backtest p5 ${fmt(q[0])}, p25 ${fmt(q[1])}, median ${fmt(q[2])}, p75 ${fmt(q[3])}, p95 ${fmt(q[4])}">
         <span class="p90" style="left:${X(q[0])}%;width:${X(q[4]) - X(q[0])}%"></span>
         <span class="p50" style="left:${X(q[1])}%;width:${X(q[3]) - X(q[1])}%"></span>
         <span class="med" style="left:${X(q[2])}%"></span><span class="mk${out ? " out" : ""}" style="left:${X(live)}%"></span></div></td>
       <td class="num ${out ? "tag warn" : "muted"}">${ord(p)}</td></tr>`;
   }).join("");
-  $("bt").innerHTML = `<table><thead><tr><th>Over ${B.n} sessions</th><th class="num">Live</th><th>Backtest range</th><th class="num">Rank</th></tr></thead>
+  $("bt").innerHTML = `<table><thead><tr><th>Over ${B.n} sessions</th><th class="num">Live</th><th class="num">Median</th><th>Backtest range</th><th class="num">Rank</th></tr></thead>
     <tbody>${body}</tbody></table>
     <p class="note">Bars: 5th to 95th and 25th to 75th percentile of ${int(B.windows)} overlapping ${B.n}-session windows,
       ${B.from} to ${B.to}; tick is the median, dark mark is live. Rank is live&rsquo;s percentile.
-      Full backtest: CAGR ${pct(B.cagr, 1, false)}, vol ${pct(B.vol, 1, false)}, max drawdown ${pct(B.dd, 1)}
-      (QLD buy &amp; hold ${pct(B.qldCagr, 1, false)}, ${pct(B.qldVol, 1, false)}, ${pct(B.qldDd, 1)}).
-      Sharpe is not shown: with ${B.n} returns its standard error exceeds the estimate.</p>`;
+      A live Sharpe is not shown: with ${B.n} returns its standard error exceeds the estimate.</p>`;
+})();
+
+/* ---------------- rule and backtest (aggregates only; the series is never shipped) ---------------- */
+(function strategy() {
+  const B = BACKTEST;
+  $("rule").innerHTML = [
+    "<b>Inputs.</b> QLD daily total-return closes only. Vol is the 20-day realized volatility of daily returns, annualized.",
+    "<b>Trend.</b> Close above its 200-day average: allocation 100%. Below: 0%.",
+    "<b>Vol cap.</b> While vol is above its expanding 90th percentile (all history to date, 252 observations minimum), any long allocation is 50%.",
+    "<b>Re-entry.</b> Below trend, go long again when the close is above its 20-day average and vol is under 0.9× its 60-day maximum.",
+    "<b>Timing.</b> Signal at close N, market-on-close order at N+1, exposure from N+2. The live engine is tested to reproduce the backtest signal exactly on every comparable day (tests/test_signal_reference.py).",
+  ].map(t => `<li>${t}</li>`).join("");
+  const row = (l, a, b) => `<tr><td>${l}</td><td class="num">${a}</td><td class="num muted">${b}</td></tr>`;
+  const worst = xs => Math.min(...xs);
+  $("btFull").innerHTML = `<table><thead><tr><th>${B.from} to ${B.to}</th><th class="num">E2</th><th class="num">QLD buy &amp; hold</th></tr></thead><tbody>
+    ${row("CAGR", pct(B.cagr, 1, false), pct(B.qldCagr, 1, false))}
+    ${row("Volatility, annualized", pct(B.vol, 1, false), pct(B.qldVol, 1, false))}
+    ${row("Sharpe, zero risk-free rate", fx(B.sharpe, 2), fx(B.qldSharpe, 2))}
+    ${row("Max drawdown", pct(B.dd, 1), pct(B.qldDd, 1))}
+    ${row("CAGR / max drawdown", fx(B.cagr / -B.dd, 2), fx(B.qldCagr / -B.qldDd, 2))}
+    ${row("Worst calendar year", pct(worst(B.yearE2), 1), pct(worst(B.yearQld), 1))}
+    ${row("Average allocation", pct(B.avgAlloc, 0, false), "100%")}
+    ${row("Days invested", pct(B.inMarket, 0, false), "100%")}
+    ${row("Allocation changes", `${B.changes} <span class="faint">(${(B.changes / (B.days / 252)).toFixed(1)}/yr)</span>`, "0")}
+  </tbody></table>`;
+
+  const Y = B.years, n = Y.length;
+  let cur = n - 1;
+  const read = i => { const d = B.yearE2[i] - B.yearQld[i];
+    $("yrReadout").innerHTML = `<span><b>${Y[i]}</b></span>
+      <span><i class="key" style="background:var(--ink);height:8px;width:8px;top:0"></i>E2 <b class="${cls(B.yearE2[i])}">${pct(B.yearE2[i], 1)}</b></span>
+      <span><i class="key" style="background:var(--series-2);height:8px;width:8px;top:0"></i>QLD <b class="${cls(B.yearQld[i])}">${pct(B.yearQld[i], 1)}</b></span>
+      <span>Difference <b class="${cls(d)}">${pp(d, 1)}</b></span>`; };
+  function draw() {
+    const host = $("years"), W = host.clientWidth, M = { l: 0, r: 58 }, H1 = W < 600 ? 170 : 210, AX = 22, H = H1 + AX;
+    const all = [...B.yearE2, ...B.yearQld];
+    const st = 0.5, lo = Math.floor(Math.min(...all) / st) * st, hi = Math.ceil(Math.max(...all) / st) * st;
+    const y = v => 6 + (1 - (v - lo) / (hi - lo)) * (H1 - 12);
+    const slot = (W - M.l - M.r) / n, bw = Math.max(2, Math.min(11, slot * 0.34));
+    const cx = i => M.l + slot * (i + 0.5);
+    let s = "";
+    for (let v = lo; v <= hi + 1e-9; v += st) {
+      s += `<line x1="${M.l}" x2="${W - M.r}" y1="${y(v)}" y2="${y(v)}" stroke="${Math.abs(v) < 1e-9 ? "var(--tick)" : "var(--rule-2)"}"/>`;
+      s += `<text x="${W - M.r + 8}" y="${y(v) + 4}">${Math.abs(v) < 1e-9 ? "0%" : (v < 0 ? MINUS : "+") + Math.abs(v * 100).toFixed(0) + "%"}</text>`;
+    }
+    s += `<rect id="yrCur" y="0" width="${slot.toFixed(1)}" height="${H1}" fill="var(--band-1)"/>`;
+    const bar = (i, v, dx, fill) => `<rect x="${(cx(i) + dx).toFixed(1)}" y="${Math.min(y(v), y(0)).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1, Math.abs(y(v) - y(0))).toFixed(1)}" fill="${fill}"/>`;
+    Y.forEach((yr, i) => { s += bar(i, B.yearQld[i], 0.5, "var(--series-2)") + bar(i, B.yearE2[i], -bw - 0.5, "var(--ink)"); });
+    const every = slot < 30 ? (slot < 17 ? 4 : 2) : 1;
+    Y.forEach((yr, i) => { if ((n - 1 - i) % every === 0) s += `<text x="${cx(i)}" y="${H - 5}" text-anchor="middle">${slot < 44 ? "’" + String(yr).slice(2) : yr}</text>`; });
+    s += `<rect id="yrHit" x="0" y="0" width="${W}" height="${H}" fill="transparent"/>`;
+    host.innerHTML = `<svg xmlns="${NS}" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${s}</svg>`;
+    const place = i => { cur = i; $("yrCur").setAttribute("x", (M.l + slot * i).toFixed(1));
+      $("yrCur").style.display = host.matches(":hover, :focus-visible") ? "" : "none"; read(i); };
+    const hit = $("yrHit");
+    hit.addEventListener("pointermove", ev => { const bx = hit.getBoundingClientRect();
+      place(Math.max(0, Math.min(n - 1, Math.floor((ev.clientX - bx.left - M.l) / slot)))); });
+    hit.addEventListener("pointerleave", () => place(n - 1));
+    host.onkeydown = ev => {
+      if (ev.key === "ArrowLeft" || ev.key === "ArrowRight") { ev.preventDefault(); place(Math.max(0, Math.min(n - 1, cur + (ev.key === "ArrowLeft" ? -1 : 1)))); }
+      else if (ev.key === "Home" || ev.key === "End") { ev.preventDefault(); place(ev.key === "Home" ? 0 : n - 1); }
+    };
+    host.onfocus = () => place(cur); host.onblur = () => place(n - 1);
+    place(Math.min(cur, n - 1));
+  }
+  draw();
+  let t; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(draw, 80); });
+  const up = Y.filter((_, i) => B.yearE2[i] > B.yearQld[i]).length;
+  const gaps = Y.map((yr, i) => [yr, B.yearE2[i] - B.yearQld[i]]).sort((a, b) => b[1] - a[1]).slice(0, 2)
+    .map(([yr, d]) => `${yr} (${pp(d, 1)})`).join(", ");
+  $("yrSub").textContent = `E2 ahead of buy & hold in ${up} of ${n} years`;
+  $("yrNote").innerHTML = `Compounded daily returns within each calendar year; ${Y[0]} starts ${B.from} and ${Y[n - 1]} ends ${B.to}.
+    Largest gaps in E2&rsquo;s favour: ${gaps}.
+    Arrow keys step through years when the chart has focus.`;
 })();
 
 /* ---------------- signal record ---------------- */
@@ -673,6 +780,7 @@ toggler("exeMore", lim => {
     "Commit timestamps are self-asserted; Alpaca&rsquo;s order record is the independent witness (AUDIT.md §3).",
     "Bars are hashed, not archived. A vendor restatement is detected, not reversed.",
     `Backtest percentiles use overlapping windows, which are serially dependent; treat ranks as a guide, not a test.`,
+    "The backtest is one in-sample history exported from a private notebook. How its parameters were chosen and what trading costs it assumes are not recorded in this repository; the forward test exists to check it.",
   ].map(t => `<li>${t}</li>`).join("");
 })();
 </script>
