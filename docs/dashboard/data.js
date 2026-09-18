@@ -1,6 +1,6 @@
-// ===== E2 dashboard data — derived from log/*.jsonl, latest log 2026-09-17 =====
+// ===== E2 dashboard data — derived from log/*.jsonl, latest log 2026-09-18 =====
 // Regenerate: python3 scripts/build_dashboard_data.py  (--check verifies byte-identity). NEVER hand-edit.
-const AS_OF = "2026-09-17";
+const AS_OF = "2026-09-18";
 const SIG = [
 {d:"2026-08-03",run:"2026-08-04",px:86.62,sma200:76.7374,sma20:87.023,vol:0.482231,hi:0.640699,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:null,src:null,bars:2660},
 {d:"2026-08-03",run:"2026-08-04",px:86.62,sma200:76.7374,sma20:87.023,vol:0.482231,hi:0.640699,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"40716df9d3ba5a333eee03d7a7491bb747e93812b34e9b57083feec1a165a410",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-08-03T23%3A59%3A59Z&limit=10000&sort=asc",bars:2660},
@@ -39,6 +39,7 @@ const SIG = [
 {d:"2026-09-14",run:"2026-09-15",px:88.1,sma200:79.5864,sma20:89.6965,vol:0.258789,hi:0.638154,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"ca4cd2f62364c4dad85e4fcda359a08d590dbba462ff0e2b1dab54fe88347644",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-09-14T23%3A59%3A59Z&limit=10000&sort=asc",bars:2689},
 {d:"2026-09-15",run:"2026-09-16",px:86.96,sma200:79.674,sma20:89.3525,vol:0.261096,hi:0.638041,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"d3669426473bbbfcd4c3ea104c2c519e301e6d1b3a93040af689636a2fbb47a1",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-09-15T23%3A59%3A59Z&limit=10000&sort=asc",bars:2690},
 {d:"2026-09-16",run:"2026-09-17",px:86.96,sma200:79.7555,sma20:89.168,vol:0.235347,hi:0.637927,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"1d711376510758c151ab40192599eb22e1fe740d89ada64754cf86839a1d3c41",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-09-16T23%3A59%3A59Z&limit=10000&sort=asc",bars:2691},
+{d:"2026-09-17",run:"2026-09-18",px:89.94,sma200:79.8466,sma20:89.1525,vol:0.267836,hi:0.637825,volmax60:0.695808,trend:true,offpeak:true,alloc:1,sha:"5754fa58adc59d05fdf497ff98f6218c29a9b88417f459abf53d6725c7b6f318",src:"https://data.alpaca.markets/v2/stocks/QLD/bars?timeframe=1Day&adjustment=all&feed=sip&start=2006-06-01&end=2026-09-17T23%3A59%3A59Z&limit=10000&sort=asc",bars:2692},
 ];
 const TRD = [
 {run:"2026-08-04T15:43:31+00:00",runEt:"2026-08-04",sig:"2026-08-03",alloc:1,action:"HALTED by HALT file — no order",orderId:null,dry:false,equity:null,refPx:null,curQty:null,tgtQty:null,lastActed:null,haltReason:"halted 2026-08-04: pre-go-live — routine plumbing test only, no orders until e2bot-08 (account reset to $100k pending)"},
@@ -74,6 +75,7 @@ const TRD = [
 {run:"2026-09-15T16:07:52+00:00",runEt:"2026-09-15",sig:"2026-09-14",alloc:1,action:"hold (signal unchanged; drift 0.40% within band 1%)",orderId:null,dry:false,equity:94207.54,refPx:87.045,curQty:1078,tgtQty:1082,lastActed:1,haltReason:null},
 {run:"2026-09-16T16:06:44+00:00",runEt:"2026-09-16",sig:"2026-09-15",alloc:1,action:"hold (signal unchanged; drift 0.39% within band 1%)",orderId:null,dry:false,equity:95592.77,refPx:88.33,curQty:1078,tgtQty:1082,lastActed:1,haltReason:null},
 {run:"2026-09-17T16:07:08+00:00",runEt:"2026-09-17",sig:"2026-09-16",alloc:1,action:"hold (signal unchanged; drift 0.38% within band 1%)",orderId:null,dry:false,equity:97145.09,refPx:89.77,curQty:1078,tgtQty:1082,lastActed:1,haltReason:null},
+{run:"2026-09-18T16:07:28+00:00",runEt:"2026-09-18",sig:"2026-09-17",alloc:1,action:"hold (signal unchanged; drift 0.38% within band 1%)",orderId:null,dry:false,equity:97198.99,refPx:89.82,curQty:1078,tgtQty:1082,lastActed:1,haltReason:null},
 ];
 const OPS = [
 {at:"2026-08-04T12:17:23+00:00",d:"2026-08-04",ev:"note",note:"e2bot-07: audit convention (AUDIT.md) + runbook adopted; ops log initialized"},
@@ -184,6 +186,7 @@ const COVERAGE = [
 {d:"2026-09-15",st:"log"},
 {d:"2026-09-16",st:"log"},
 {d:"2026-09-17",st:"log"},
+{d:"2026-09-18",st:"log"},
 ];
 const HOLIDAYS = ["2026-01-01","2026-01-19","2026-02-16","2026-04-03","2026-05-25","2026-06-19","2026-07-03","2026-09-07","2026-11-26","2026-12-25","2027-01-01","2027-01-18","2027-02-15","2027-03-26","2027-05-31","2027-06-18","2027-07-05","2027-09-06","2027-11-25","2027-12-24"];
 const BACKTEST = {from:"2007-07-23",to:"2026-07-28",days:4784,vol:0.309112,dd:-0.378848,cagr:0.285511,qldVol:0.446452,qldDd:-0.831279,qldCagr:0.232984,sharpe:0.96832,qldSharpe:0.693489,avgAlloc:0.807588,inMarket:0.827968,changes:199,years:[2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026],yearE2:[-0.08485,-0.161702,0.751172,0.170775,-0.098991,0.177734,0.726605,0.336422,0.101693,0.258891,0.703408,0.006242,0.487935,0.781003,0.554056,-0.281606,0.867886,0.42018,0.502659,0.089937],yearQld:[-0.000395,-0.728867,1.212062,0.368953,0.000402,0.347676,0.821122,0.37592,0.147411,0.101664,0.703408,-0.083112,0.816903,0.88896,0.546695,-0.605222,1.17118,0.428166,0.303565,0.149566],n:30,windows:4755,retQ:[-0.132438,-0.032323,0.03534,0.107944,0.200032],ddQ:[-0.193278,-0.112059,-0.074477,-0.045425,-0.016054],volQ:[0.113761,0.22063,0.280331,0.353114,0.488256],retPct:0.169295,ddPct:0.46225,volPct:0.267298};
